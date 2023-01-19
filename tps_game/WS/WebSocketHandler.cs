@@ -6,7 +6,7 @@ namespace tps_game.WS
     {
         private static Random random = new Random();
 
-        private static List<Dictionary<string, string>> players;
+        private static List<Dictionary<string, object>> players = new List<Dictionary<string, object>>();
 
         public static async Task HandleWebSocketRequest(HttpContext context)
         {
@@ -30,10 +30,15 @@ namespace tps_game.WS
             List<byte> wsPayload = new List<byte>(1024 * 4); // 4 KB initial capacity
             byte[] messageReader = new byte[1024 * 4]; // Temp container
 
-            // Send initial position
-            int posX = (int)random.NextInt64(1, 10);
-            int posY = (int)random.NextInt64(1, 10);
-            await send(socket, new { type="initial", posX, posY });
+            // Initialize the player on the server
+            var player = addPlayer(
+                socket,
+                username,
+                (int)random.NextInt64(1, 10),
+                (int)random.NextInt64(1, 10)
+            );
+            await broadcastSummary();
+            //await playerConnected(username, posX, posY);
 
             // Reading loop
             while (connectionAlive)
@@ -63,25 +68,30 @@ namespace tps_game.WS
                     Console.WriteLine($"Client {username} says \"{message}\"");
 
                     string key = message.ToUpper();
-                    if (key == "W")
+                    if ("WASD".Contains(key))
                     {
-                        Console.WriteLine($"Client {username} moved up");
-                        posY--;
-                    }
-                    else if (key == "A")
-                    {
-                        Console.WriteLine($"Client {username} moved left");
-                        posX--;
-                    }
-                    else if (key == "S")
-                    {
-                        Console.WriteLine($"Client {username} moved down");
-                        posY++;
-                    }
-                    else if (key == "D")
-                    {
-                        Console.WriteLine($"Client {username} moved right");
-                        posX++;
+                        if (key == "W")
+                        {
+                            Console.WriteLine($"Client {username} moved up");
+                            player["posY"] = (int)player["posY"] - 1;
+                        }
+                        else if (key == "A")
+                        {
+                            Console.WriteLine($"Client {username} moved left");
+                            player["posX"] = (int)player["posX"] - 1;
+                        }
+                        else if (key == "S")
+                        {
+                            Console.WriteLine($"Client {username} moved down");
+                            player["posY"] = (int)player["posY"] + 1;
+                        }
+                        else if (key == "D")
+                        {
+                            Console.WriteLine($"Client {username} moved right");
+                            player["posX"] = (int)player["posX"] + 1;
+                        }
+
+                        await broadcastSummary();
                     }
                 }
                 else if (wsResponse.MessageType == WebSocketMessageType.Close)
@@ -91,6 +101,8 @@ namespace tps_game.WS
             }
 
             Console.WriteLine($"User \"{username}\" disconnected.");
+            removePlayer(player);
+            await broadcastSummary();
 
         }
 
@@ -101,9 +113,29 @@ namespace tps_game.WS
             await socket.SendAsync(System.Text.Encoding.UTF8.GetBytes(json), WebSocketMessageType.Text, true, CancellationToken.None);
         }
 
-        private static Dictionary<string, string> getPlayer(string username)
+        private static async Task send(WebSocket? socket, string json)
         {
-            List<Dictionary<string, string>> search = players.Where(player => player["username"].ToString() == username).ToList();
+            await socket.SendAsync(System.Text.Encoding.UTF8.GetBytes(json), WebSocketMessageType.Text, true, CancellationToken.None);
+        }
+
+        private static async Task broadcastSummary()
+        {
+            var playerPositions = Newtonsoft.Json.JsonConvert.SerializeObject(new
+            {
+                type = "playerPositions",
+                list = summarizePlayers()
+            });
+
+            for (int i = 0; i < players.Count; ++i)
+            {
+                var socket = (WebSocket) players[i]["socket"];
+                await send(socket, playerPositions);
+            }
+        }
+
+        private static Dictionary<string, object> getPlayer(string username)
+        {
+            var search = players.Where(player => player["username"].ToString() == username).ToList();
             if (search.Count > 0)
             {
                 return search[0];
@@ -114,14 +146,58 @@ namespace tps_game.WS
             }
         }
 
-        private static void addPlayer(string username, int posX, int posY)
+        // Summarize players and their positions
+        private static List<Dictionary<string, object>> summarizePlayers()
         {
-            Dictionary<string, string> player = new Dictionary<string, string>();
-            player["username"] = username;
-            player["posX"] = posX.ToString();
-            player["posY"] = posY.ToString();
-            players.Add(player);
+            return players.Select(player =>
+            {
+                var summary = new Dictionary<string, object>()
+                {
+                    { "username", player["username"] },
+                    { "posX", player["posX"] },
+                    { "posY", player["posY"] }
+                };
+                return summary;
+            }).ToList();
         }
+
+        private static Dictionary<string, object> addPlayer(WebSocket socket, string username, int posX, int posY)
+        {
+            var player = new Dictionary<string, object>();
+            player["socket"] = socket;
+            player["username"] = username;
+            player["posX"] = posX;
+            player["posY"] = posY;
+            players.Add(player);
+            return player;
+        }
+
+        private static void removePlayer(Dictionary<string, object> player)
+        {
+            players.Remove(player);
+        }
+
+        private static async Task playerConnected(string username, int posX, int posY)
+        {
+            // First notify everyone about this player
+            var notify = Newtonsoft.Json.JsonConvert.SerializeObject(new
+            {
+                type = "new-enemy",
+                posX,
+                posY
+            });
+
+            // Notify other players about the newcomer
+            for (int i = 0; i < players.Count; ++i)
+            {
+                if (players[i]["username"].ToString() != username)
+                {
+                    var socket = (WebSocket)players[i]["socket"];
+                    await send(socket, notify);
+                }
+            }
+        }
+
 
     }
 }

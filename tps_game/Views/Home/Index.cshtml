@@ -31,6 +31,10 @@
         background: red;
     }
 
+    #game > div.is-teritory {
+        opacity: 0.5;
+    }
+
 </style>
 
 <div class="text-center mt-4">
@@ -88,8 +92,9 @@
     // Connect web socket
     function connect() {
 
+        const myUsername = username_i.value;
         var url = 'wss://' + location.host;
-        var usernameComponent = '?username=' + encodeURIComponent(username_i.value);
+        var usernameComponent = '?username=' + encodeURIComponent(myUsername);
         var socket = new WebSocket(url + usernameComponent);
 
         socket.addEventListener('open', function(event) {
@@ -115,7 +120,8 @@
 
         socket.addEventListener('message', function(event) {
             addLog('Message from server: ' + event.data);
-            handleMessage(event.data);
+            console.log(event.data);
+            handleMessage(event.data, myUsername);
         });
 
         socket.addEventListener('close', function(event) {
@@ -126,15 +132,31 @@
         });
     }
 
-    function handleMessage(msg) {
+    function clearMap() {
+        for (let child of game.children) {
+            
+            if (child.classList.contains('is-player') || child.classList.contains('is-enemy')) {
+                child.classList.add('is-teritory');
+            }
+            //child.classList.remove('is-player');
+            //child.classList.remove('is-enemy');
+        }
+    }
+
+    function handleMessage(msg, myUsername) {
         let obj = JSON.parse(msg);
 
-        if (obj.type == 'initial') {
-            drawSquare(obj.posX, obj.posY, 'is-player');
-        }
-        else if (obj.type == 'enemies') {
-            for (let enemy of obj.list) {
-                drawSquare(enemy.posX, enemy.posY, 'is-enemy');
+        if (obj.type == 'playerPositions') {
+
+            clearMap();
+            for (let player of obj.list) {
+
+                if (player.username == myUsername) {
+                    drawSquare(player.posX, player.posY, 'is-player');
+                }
+                else {
+                    drawSquare(player.posX, player.posY, 'is-enemy');
+                }
             }
         }
     }
