@@ -79,10 +79,10 @@
         ulLog.insertAdjacentElement('afterbegin', item);
     }
 
-    function drawSquare(posX, posY) {
+    function drawSquare(posX, posY, squareClass) {
         let index = (posY - 1) * 10 + (posX - 1);
         console.log(index);
-        game.children[index].classList.add('is-player');
+        game.children[index].classList.add(squareClass);
     }
 
     // Connect web socket
@@ -130,7 +130,12 @@
         let obj = JSON.parse(msg);
 
         if (obj.type == 'initial') {
-            drawSquare(obj.posX, obj.posY);
+            drawSquare(obj.posX, obj.posY, 'is-player');
+        }
+        else if (obj.type == 'enemies') {
+            for (let enemy of obj.list) {
+                drawSquare(enemy.posX, enemy.posY, 'is-enemy');
+            }
         }
     }
 

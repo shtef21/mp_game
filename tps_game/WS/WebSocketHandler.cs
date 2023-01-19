@@ -118,8 +118,8 @@ namespace tps_game.WS
         {
             Dictionary<string, string> player = new Dictionary<string, string>();
             player["username"] = username;
-            player["posX"] = posX;
-            player["posY"] = posY;
+            player["posX"] = posX.ToString();
+            player["posY"] = posY.ToString();
             players.Add(player);
         }
 
