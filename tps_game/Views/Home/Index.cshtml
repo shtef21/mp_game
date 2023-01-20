@@ -13,14 +13,14 @@
 
     #game > div {
         display: inline-block;
-        width: 25px;
-        height: 25px;
+        width: 5px;
+        height: 5px;
         margin: 0;
         padding: 0;
         box-sizing: border-box;
         background: blue;
-        border-right: 1px solid black;
-        border-bottom: 1px solid black;
+        /*border-right: 1px solid black;
+        border-bottom: 1px solid black;*/
     }
 
     #game > div.is-player {
@@ -71,6 +71,8 @@
 
 <script>
 
+    let pid = null;
+
     function addLog(txt) {
         let log = document.createElement('pre');
         let item = document.createElement('li');
@@ -102,7 +104,7 @@
             loginForm.classList.add('hidden');
             game.classList.remove('hidden');
 
-            game.onkeyup = function (event) {
+            game.onkeydown = function (event) {
                 if (event.keyCode == 87) {
                     socket.send('W');
                 }
@@ -128,35 +130,83 @@
             addLog('Connection to ' + url + ' closed.');
             loginForm.classList.remove('hidden');
             game.classList.add('hidden');
-            game.onkeyup = null;
+            game.onkeydown = null;
         });
     }
 
-    function clearMap() {
+    function resetMap(mapHeight, mapWidth) {
+
+        game.dataset.height = mapHeight;
+        game.dataset.width = mapWidth;
+
+        // If needed, draw blocks in the game div
+        while (game.children.length < mapHeight * mapWidth) {
+            let block = document.createElement('div');
+            game.insertAdjacentElement('beforeend', block);
+        }
+
+        // Clear all classes from blocks
         for (let child of game.children) {
-            
-            if (child.classList.contains('is-player') || child.classList.contains('is-enemy')) {
-                child.classList.add('is-teritory');
-            }
-            //child.classList.remove('is-player');
-            //child.classList.remove('is-enemy');
+            child.className = '';
         }
     }
 
     function handleMessage(msg, myUsername) {
         let obj = JSON.parse(msg);
 
-        if (obj.type == 'playerPositions') {
+        if (obj.type == 'ID') {
+            pid = obj.ID;
+        }
+        else if (obj.type == 'map') {
 
-            clearMap();
-            for (let player of obj.list) {
+            let mapWidth = obj.width;
+            let mapHeight = obj.height;
+            resetMap(mapHeight, mapWidth);
 
-                if (player.username == myUsername) {
-                    drawSquare(player.posX, player.posY, 'is-player');
+            let currRow = 0;
+            let rows = obj.map.split('\n');
+            
+            for (let r of rows) {
+
+                let currCol = 0;
+                let cols = r.split(' ');
+
+                for (let c of cols) {
+                    
+                    let mapIdx = currRow * mapWidth + currCol;
+                    let gameBlock = game.children[mapIdx];
+
+                    if (c == 'x') {
+                        
+                        // No man's land
+                        gameBlock.className = '';
+                    }
+                    else if (c.split('-')[0] == 'p') {
+                        
+                        // This is a player
+                        if (c.split('-')[1] == pid) {
+                            gameBlock.classList.add('is-player');
+                        }
+                        else {
+                            gameBlock.classList.add('is-enemy');
+                        }
+                    }
+                    else if (c.split('-')[0] == 't') {
+                        
+                        // Get teritory owner
+                        if (c.split('-')[1] == pid) {
+                            gameBlock.classList.add('is-player');
+                        }
+                        else {
+                            gameBlock.classList.add('is-enemy');
+                        }
+                        // This is player's teritory
+                        gameBlock.classList.add('is-teritory');
+                    }
+                    currCol++;
                 }
-                else {
-                    drawSquare(player.posX, player.posY, 'is-enemy');
-                }
+
+                currRow++;
             }
         }
     }
@@ -175,12 +225,6 @@
             }
         });
 
-        // Initialize the game
-        for (let i = 0; i < 100; ++i) {
-            
-            let block = document.createElement('div');
-            game.insertAdjacentElement('beforeend', block);
-        }
     });
 
 </script>

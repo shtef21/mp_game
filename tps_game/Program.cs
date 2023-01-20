@@ -1,3 +1,5 @@
+using tps_game.Code;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -25,7 +27,7 @@ app.Use(async (context, next) =>
 {
     if (context.WebSockets.IsWebSocketRequest)
     {
-        await tps_game.WS.WebSocketHandler.HandleWebSocketRequest(context);
+        await WebSocketHandler.HandleWebSocketRequest(context);
     }
     else
     {
