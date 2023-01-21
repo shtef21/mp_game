@@ -4,7 +4,7 @@ namespace tps_game.Code
 {
     public class WebSocketHandler
     {
-        static Game game = new Game(50, 50);
+        static Game game = new Game(10, 10);
 
         private static List<Dictionary<string, object>> players = new List<Dictionary<string, object>>();
 
@@ -70,9 +70,15 @@ namespace tps_game.Code
                     break;
                 }
 
-                // Process the message
-                if (wsResponse.MessageType == WebSocketMessageType.Text)
+                if (wsResponse.CloseStatus.HasValue)
                 {
+                    // Client has closed the connection for some reason
+                    connectionAlive = false;
+                }
+                else if (wsResponse.MessageType == WebSocketMessageType.Text)
+                {
+                    // Process the message
+
                     string message = System.Text.Encoding.UTF8.GetString(wsPayload.ToArray());
                     Console.WriteLine($"Client {username} says \"{message}\"");
 
@@ -107,10 +113,6 @@ namespace tps_game.Code
                             await game.SendUpdate();
                         }
                     }
-                }
-                else if (wsResponse.MessageType == WebSocketMessageType.Close)
-                {
-                    connectionAlive = false;
                 }
             }
 

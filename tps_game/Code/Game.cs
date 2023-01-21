@@ -61,7 +61,20 @@ namespace tps_game.Code
 
         public void RemovePlayer(Player player)
         {
+            // Remove player from the list
             players.Remove(player);
+
+            // Remove player's teritories
+            for (int i = 0; i < mapHeight; ++i)
+            {
+                for (int j = 0; j < mapWidth; ++j)
+                {
+                    if (map[i, j].Contains("-") && map[i, j].Split("-")[1] == player.ID.ToString())
+                    {
+                        map[i, j] = "-";
+                    }
+                }
+            }
         }
 
         public bool UsernameAvailable(string username)
@@ -73,17 +86,25 @@ namespace tps_game.Code
 
         public async Task SendUpdate()
         {
-            object update = new
+            // First display every player's position on the map
+            foreach (Player player in players)
+            {
+                map[player.y, player.x] = "p-" + player.ID;
+            }
+
+            // Prepare JSON summary
+            string update = Newtonsoft.Json.JsonConvert.SerializeObject(new
             {
                 type = "map",
                 height = mapHeight,
                 width = mapWidth,
                 map = SummarizeMap()
-            };
+            });
 
+            // Send JSON to each player
             for (int i = 0; i < players.Count; ++i)
             {
-                await players[i].SendData(update);
+                await players[i].SendJSON(update);
             }
         }
 
