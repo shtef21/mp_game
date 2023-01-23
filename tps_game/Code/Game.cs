@@ -145,6 +145,68 @@ namespace tps_game.Code
 
             // Now set player's main block
             map[player.y, player.x] = "p-" + player.ID + "-" + player.color;
+
+            // If this move connected player's teritory
+            if (false)
+            {
+                string surrounding = getSurroundingTypes(player.y, player.x);
+                if (surrounding.Count(ch => ch == 't') >= 2)
+                {
+                    tryExpandTeritory(player.y, player.x);
+                }
+            }
+        }
+
+        void tryExpandTeritory(int startY, int startX)
+        {
+            // TODO: finish this function
+            //
+            // - Implement a HashSet that contains visited tuples, e.g.:
+            //      HashSet<(int, int)>
+            // - Use (or delete) isTerrain and isTeritory functions
+        }
+
+        string getSurroundingTypes(int y, int x)
+        {
+            string blocksAround = getFirstChar(y - 1, x) + getFirstChar(y, x - 1)
+                + getFirstChar(y, x + 1) + getFirstChar(y + 1, x);
+            return blocksAround;
+        }
+
+        bool isTerrain(int y, int x)
+        {
+            if (y >= 0 && y <= mapHeight - 1 && x >= 0 && x <= mapWidth - 1)
+            {
+                return map[y, x] == terrainSkin;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Check if coordinate is player's teritory. If player is null, then any teritory is valid.
+        /// </summary>
+        bool isTeritory(int y, int x, Player? player)
+        {
+            if (y >= 0 && y <= mapHeight - 1 && x >= 0 && x <= mapWidth - 1)
+            {
+                if (map[y, x][0] == 't')
+                {
+                    if (player == null || map[y, x].Split("-")[1] == player.ID.ToString())
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        string getFirstChar(int y, int x, string fallback="")
+        {
+            if (y >= 0 && y <= mapHeight - 1 && x >= 0 && x <= mapWidth - 1)
+            {
+                return map[y, x][0].ToString();
+            }
+            return "";
         }
 
         // A player has moved, so remove 1 turn
