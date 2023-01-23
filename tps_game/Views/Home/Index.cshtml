@@ -2,41 +2,6 @@
     ViewData["Title"] = "Home Page";
 }
 
-<style>
-    #game {
-        width: 250px;
-        height: 250px;
-        margin: 0 auto;
-        background: black;
-        line-height: 0;
-    }
-
-    #game > div {
-        display: inline-block;
-        width: 25px;
-        height: 25px;
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-        background: blue;
-        border-right: 1px solid black;
-        border-bottom: 1px solid black;
-    }
-
-    #game > div.is-player {
-        background: green;
-    }
-
-    #game > div.is-enemy {
-        background: red;
-    }
-
-    #game > div.is-teritory {
-        opacity: 0.5;
-    }
-
-</style>
-
 <div class="text-center mt-4">
     <h1 class="text-[2rem] font-bold">Welcome to the MP Game</h1>
 </div>
@@ -58,8 +23,8 @@
 </div>
 
 <!-- GAME -->
-<div id="game" class="hidden" tabindex="0">
-</div>
+<canvas id="gameCanvas" class="hidden" tabindex="0" style="margin: 0 auto;">
+</canvas>
 
 <div class="ml-[100px]">
     <ul id="ulLog" class="list-none">
@@ -71,7 +36,8 @@
 
 <script>
 
-    let pid = null;
+    var ctx = gameCanvas.getContext("2d");
+    let pid = null; // Player's PID
 
     function addLog(txt) {
         let log = document.createElement('pre');
@@ -85,12 +51,6 @@
         ulLog.insertAdjacentElement('afterbegin', item);
     }
 
-    function drawSquare(posX, posY, squareClass) {
-        let index = (posY - 1) * 10 + (posX - 1);
-        console.log(index);
-        game.children[index].classList.add(squareClass);
-    }
-
     // Connect web socket
     function connect() {
 
@@ -102,9 +62,9 @@
         socket.addEventListener('open', function(event) {
             addLog('Connected to ' + url);
             loginForm.classList.add('hidden');
-            game.classList.remove('hidden');
+            gameCanvas.classList.remove('hidden');
 
-            game.onkeydown = function (event) {
+            gameCanvas.onkeydown = function (event) {
                 if (event.keyCode == 87) {
                     socket.send('W');
                 }
@@ -129,27 +89,65 @@
         socket.addEventListener('close', function(event) {
             addLog('Connection to ' + url + ' closed.');
             loginForm.classList.remove('hidden');
-            game.classList.add('hidden');
-            game.onkeydown = null;
+            gameCanvas.classList.add('hidden');
+            gameCanvas.onkeydown = null;
         });
     }
 
-    function resetMap(mapHeight, mapWidth) {
+    // Draw a map block
+    function drawRectangle(y, x, blockSize, fillColor='black', innerBorder=false) {
+        
+        // First draw the rectangle
+        ctx.fillStyle = fillColor;
+        ctx.fillRect(x * blockSize, y * blockSize, blockSize, blockSize);
 
-        game.dataset.height = mapHeight;
-        game.dataset.width = mapWidth;
+        // Draw border
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.lineWidth = 1;
+        ctx.rect(x * blockSize, y * blockSize, blockSize, blockSize);
+        ctx.stroke();
 
-        // If needed, draw blocks in the game div
-        while (game.children.length < mapHeight * mapWidth) {
-            let block = document.createElement('div');
-            game.insertAdjacentElement('beforeend', block);
-        }
-
-        // Clear all classes from blocks
-        for (let child of game.children) {
-            child.className = '';
+        // Red inner border marks the client from his or her enemies
+        if (innerBorder === true) {
+            ctx.beginPath();
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            ctx.rect(x * blockSize, y * blockSize, blockSize - 1, blockSize - 1);
+            ctx.stroke();
         }
     }
+
+    // Clear all blocks from the map
+    function clearCanvas() {
+        ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+    }
+
+    // Draw text on the map block
+    function drawText(y, x, text, textSize, fillColor='black') {
+        ctx.font = textSize + 'px Consolas';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = fillColor;
+        ctx.fillText(text, x * textSize + textSize / 2, y * textSize + textSize / 2 + Math.floor((textSize * 0.075)));
+    }
+
+    // Hex number to decimal (used in hexColorToRgb)
+    function hexToDecimal(hexNum) {
+        return parseInt(hexNum, 16);
+    }
+
+    // Convert hex color to RGBA (used when displaying player's teritory blocks)
+    function hexColorToRgb(hexColor, opacity='1.0') {
+        let css = '';
+        css += 'rgba(';
+        css += hexToDecimal(hexColor.substring(1, 3)) + ', ';
+        css += hexToDecimal(hexColor.substring(3, 5)) + ', ';
+        css += hexToDecimal(hexColor.substring(5, 7)) + ', ';
+        css += opacity + ')';
+        return css;
+    }
+
 
     function handleMessage(msg, myUsername) {
         let obj = JSON.parse(msg);
@@ -161,51 +159,65 @@
 
             let mapWidth = obj.width;
             let mapHeight = obj.height;
-            resetMap(mapHeight, mapWidth);
+            let blockSize = gameCanvas.height / mapHeight; // Block size in pixels
 
             let currRow = 0;
             let rows = obj.map.split('\n');
+
+            // Remove previous blocks before drawing new ones
+            clearCanvas();
             
+            // Iterate map rows
             for (let r of rows) {
 
                 let currCol = 0;
                 let cols = r.split(' ');
 
+                // Iterate row blocks
                 for (let c of cols) {
                     
-                    let mapIdx = currRow * mapWidth + currCol;
-                    let gameBlock = game.children[mapIdx];
+                    // Default terrain color
+                    let blockColor = 'lightblue';
+
+                    // Try to check if this block has a custom color
+                    if (c.includes('-')) {
+                        blockColor = c.split('-')[2];
+                    }
 
                     if (c == 'x') {
-                        
                         // No man's land
-                        gameBlock.className = '';
+                        drawRectangle(currRow, currCol, blockSize, blockColor);
                     }
                     else if (c.split('-')[0] == 'p') {
                         
-                        // This is a player
                         if (c.split('-')[1] == pid) {
-                            gameBlock.classList.add('is-player');
+                            // Player's main block
+                            drawRectangle(currRow, currCol, blockSize, blockColor, true);
                         }
                         else {
-                            gameBlock.classList.add('is-enemy');
+                            // Enemies' main block
+                            drawRectangle(currRow, currCol, blockSize, blockColor);
+                        }
+
+                        // If this player is onturn, show turn count
+                        if (c.split('-')[1] == obj?.turn?.playerID) {
+                            drawText(currRow, currCol, obj.turn.movesLeft, blockSize);
                         }
                     }
                     else if (c.split('-')[0] == 't') {
                         
-                        // Get teritory owner
+                        // Teritory blocks, drawn with 50% opacity
                         if (c.split('-')[1] == pid) {
-                            gameBlock.classList.add('is-player');
+                            // Player teritory
+                            drawRectangle(currRow, currCol, blockSize, hexColorToRgb(blockColor, 0.5));
                         }
                         else {
-                            gameBlock.classList.add('is-enemy');
+                            // Enemy teritory
+                            drawRectangle(currRow, currCol, blockSize, hexColorToRgb(blockColor, 0.5));
                         }
-                        // This is player's teritory
-                        gameBlock.classList.add('is-teritory');
                     }
                     currCol++;
                 }
-
                 currRow++;
             }
         }
@@ -224,6 +236,10 @@
                 signInButton.disabled = true;
             }
         });
+
+        // Setup canvas
+        gameCanvas.width = 250;
+        gameCanvas.height = 250;
 
     });
 

@@ -8,7 +8,10 @@ namespace tps_game.Code
 
         public readonly ulong ID;
         public readonly string username;
+        public readonly string color;
         public int x, y;
+
+        public int movesLeft = 0;
 
         // Underlying WebSocket connection with the client
         WebSocket socket;
@@ -18,6 +21,9 @@ namespace tps_game.Code
             this.ID = idCounter++;
             this.socket = socket;
             this.username = username;
+            
+            // Assign a random hex color to player
+            this.color = string.Format("#{0:X6}", Game.random.Next(0x1000000));
         }
 
         public async Task SendData(object data)
