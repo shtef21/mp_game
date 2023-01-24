@@ -2,10 +2,59 @@
     ViewData["Title"] = "Home Page";
 }
 
-<div class="text-center mt-4">
+<style>
+
+    #logContainer {
+        width: 100%;
+        max-width: 800px;
+        max-height: 500px;
+        overflow-y: scroll;
+        margin: 0 auto;
+    }
+
+    #ulLog li {
+        background: #292d3f;
+        color: #c2e884;
+        padding: 5px;
+        border-radius: 5px;
+        margin-bottom: 5px;
+        overflow-x: scroll;
+    }
+
+    #gameCanvasContainer {
+        margin-top: 15px;
+    }
+
+    #bLeft {
+        /*margin-right: -4px;*/
+    }
+
+    #bUp {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 500px;
+        transform: translateX(-50%);
+    }
+
+    #bDown {
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        width: 500px;
+        transform: translateX(-50%);
+    }
+
+    #bRight {
+        /*margin-left: -4px;*/
+    }
+</style>
+
+<div id="mainHeading" class="text-center mt-4">
     <h1 class="text-[2rem] font-bold">Welcome to the MP Game</h1>
 </div>
 
+<!-- Login form -->
 <div id="loginForm">
     <form class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
         <div class="mb-4">
@@ -23,10 +72,37 @@
 </div>
 
 <!-- GAME -->
-<canvas id="gameCanvas" class="hidden" tabindex="0" style="margin: 0 auto;">
-</canvas>
+<div id="gameCanvasContainer" class="relative py-[48px] mb-[25px] mx-auto text-center hidden">
 
-<div class="ml-[100px]">
+    <!-- Left -->
+    <button id="bLeft" class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-500 rounded" data-move="A">
+        <i class="fa-solid fa-arrow-left"></i>
+    </button>
+
+    <!-- Up -->
+    <button id="bUp" class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-500 rounded" data-move="W">
+        <i class="fa-solid fa-arrow-up"></i>
+    </button>
+
+    <canvas id="gameCanvas" class="inline-block" tabindex="0" style="margin: 0 auto;"></canvas>
+
+    <!-- Down -->
+    <button id="bDown" class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-500 rounded" data-move="S">
+        <i class="fa-solid fa-arrow-down"></i>
+    </button>
+
+    <!-- Right -->
+    <button id="bRight" class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-500 rounded" data-move="D">
+        <i class="fa-solid fa-arrow-right"></i>
+    </button>
+
+</div>
+
+<!-- Logs -->
+<div id="logContainer" class="px-3 hidden">
+    <h3>
+        Logs (<span id="logCount">1</span>):
+    </h3>
     <ul id="ulLog" class="list-none">
         <li>
             1. <strong><pre class="inline">Logs go here</pre></strong>
@@ -49,6 +125,7 @@
         item.insertAdjacentHTML('beforeend', '<strong>' + log.outerHTML + '</strong>');
 
         ulLog.insertAdjacentElement('afterbegin', item);
+        logCount.innerText = ulLog.children.length;
     }
 
     // Connect web socket
@@ -60,37 +137,62 @@
         var socket = new WebSocket(url + usernameComponent);
 
         socket.addEventListener('open', function(event) {
+
             addLog('Connected to ' + url);
             loginForm.classList.add('hidden');
-            gameCanvas.classList.remove('hidden');
+            mainHeading.classList.add('hidden');
+            gameCanvasContainer.classList.remove('hidden');
+
+            // Setup movement
+
+            bUp.onclick = bLeft.onclick = bDown.onclick = bRight.onclick = function(event) {
+                let button = event.target;
+                if (button.tagName == 'I') {
+                    button = button.parentElement;
+                }
+                socket.send(button.dataset.move);
+            }
 
             gameCanvas.onkeydown = function (event) {
-                if (event.keyCode == 87) {
-                    socket.send('W');
+
+                addLog('Key code: ' + event.keyCode);
+
+                if (event.keyCode == 87 || event.keyCode == 38) {
+                    socket.send('W'); // W or arrow up
                 }
-                else if (event.keyCode == 65) {
-                    socket.send('A');
+                else if (event.keyCode == 65 || event.keyCode == 37) {
+                    socket.send('A'); // A or arrow left
                 }
-                else if (event.keyCode == 83) {
-                    socket.send('S');
+                else if (event.keyCode == 83 || event.keyCode == 40) {
+                    socket.send('S'); // S or arrow down
                 }
-                else if (event.keyCode == 68) {
-                    socket.send('D');
+                else if (event.keyCode == 68 || event.keyCode == 39) {
+                    socket.send('D'); // D or arrow right
                 }
             }
         });
 
         socket.addEventListener('message', function(event) {
-            addLog('Message from server: ' + event.data);
-            console.log(event.data);
+            let logText = event.data;
+
+            // Try to format as JSON
+            try {
+                logText = JSON.stringify(JSON.parse(logText), null, 2);
+            }
+            catch {}
+
+            addLog('Message from server:\n' + logText);
+            console.log(logText);
             handleMessage(event.data, myUsername);
         });
 
         socket.addEventListener('close', function(event) {
             addLog('Connection to ' + url + ' closed.');
             loginForm.classList.remove('hidden');
-            gameCanvas.classList.add('hidden');
+            mainHeading.classList.remove('hidden');
+            gameCanvasContainer.classList.add('hidden');
             gameCanvas.onkeydown = null;
+            bUp.onclick = bLeft.onclick = bDown.onclick = bRight.onclick = null
         });
     }
 
@@ -113,7 +215,7 @@
             ctx.beginPath();
             ctx.strokeStyle = 'red';
             ctx.lineWidth = 2;
-            ctx.rect(x * blockSize, y * blockSize, blockSize - 1, blockSize - 1);
+            ctx.rect(x * blockSize, y * blockSize + 1, blockSize - 1, blockSize - 2);
             ctx.stroke();
         }
     }
@@ -149,7 +251,7 @@
     }
 
 
-    function handleMessage(msg, myUsername) {
+    function handleMessage(msg) {
         let obj = JSON.parse(msg);
 
         if (obj.type == 'ID') {
@@ -226,6 +328,11 @@
     // Initialize page
     document.addEventListener('DOMContentLoaded', function() {
 
+        // Only show logs on localhost
+        if (location.hostname == 'localhost') {
+            logContainer.classList.remove('hidden');
+        }
+
         // Initialize the input form
         username_i.value = '';
         username_i.addEventListener('keyup', function() {
@@ -238,8 +345,20 @@
         });
 
         // Setup canvas
-        gameCanvas.width = 250;
-        gameCanvas.height = 250;
+        let cWidth = 250;
+        let cHeight = 250;
+        gameCanvas.width = cWidth;
+        gameCanvas.height = cHeight;
+        gameCanvasContainer.style.minWidth = (cWidth + 2 * 50 + 50) + 'px';
+        gameCanvasContainer.style.maxWidth = '1200px';
+        bLeft.style.height = cHeight + 'px';
+        bRight.style.height = cHeight + 'px';
+        bUp.style.width = (cWidth + 2 * 50) + 'px';
+        bDown.style.width = (cWidth + 2 * 50) + 'px';
+
+        // Try to login with 'test'
+        username_i.value = 'test';
+        connect();
 
     });
 

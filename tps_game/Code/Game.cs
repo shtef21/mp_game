@@ -70,6 +70,13 @@ namespace tps_game.Code
 
         public void RemovePlayer(Player player)
         {
+            // If it was this player's turn, move to the next
+            if (player.movesLeft > 0)
+            {
+                player.movesLeft = 0;
+                subtractPlayerMoves(player);
+            }
+
             // Remove player from the list
             players.Remove(player);
 
@@ -274,7 +281,7 @@ namespace tps_game.Code
             player.movesLeft--;
             
             // If this player has no moves left, give 5 moves to the next player
-            if (player.movesLeft == 0)
+            if (player.movesLeft <= 0)
             {
                 if (players.IndexOf(player) == players.Count - 1)
                 {
@@ -292,8 +299,13 @@ namespace tps_game.Code
             if (player.x > 0 && player.movesLeft > 0)
             {
                 player.x--;
+
+                // Movement on player territory does not decrease move count
+                if (isPlayerOrTerritory(player.y, player.x, player) == false)
+                {
+                    subtractPlayerMoves(player);
+                }
                 updatePlayerPosition(player);
-                subtractPlayerMoves(player);
                 return true;
             }
             return false;
@@ -304,8 +316,13 @@ namespace tps_game.Code
             if (player.x < mapWidth - 1 && player.movesLeft > 0)
             {
                 player.x++;
+
+                // Movement on player territory does not decrease move count
+                if (isPlayerOrTerritory(player.y, player.x, player) == false)
+                {
+                    subtractPlayerMoves(player);
+                }
                 updatePlayerPosition(player);
-                subtractPlayerMoves(player);
                 return true;
             }
             return false;
@@ -316,8 +333,13 @@ namespace tps_game.Code
             if (player.y > 0 && player.movesLeft > 0)
             {
                 player.y--;
+
+                // Movement on player territory does not decrease move count
+                if (isPlayerOrTerritory(player.y, player.x, player) == false)
+                {
+                    subtractPlayerMoves(player);
+                }
                 updatePlayerPosition(player);
-                subtractPlayerMoves(player);
                 return true;
             }
             return false;
@@ -328,8 +350,13 @@ namespace tps_game.Code
             if (player.y < mapHeight - 1 && player.movesLeft > 0)
             {
                 player.y++;
+
+                // Movement on player territory does not decrease move count
+                if (isPlayerOrTerritory(player.y, player.x, player) == false)
+                {
+                    subtractPlayerMoves(player);
+                }
                 updatePlayerPosition(player);
-                subtractPlayerMoves(player);
                 return true;
             }
             return false;
