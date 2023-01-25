@@ -1,4 +1,5 @@
 ﻿using System.Net.WebSockets;
+using System.Numerics;
 
 namespace tps_game.Code
 {
@@ -8,8 +9,8 @@ namespace tps_game.Code
 
         public readonly ulong ID;
         public readonly string username;
-        public readonly string color;
         public int x, y;
+        public string color;
 
         public int movesLeft = 0;
 
@@ -23,7 +24,14 @@ namespace tps_game.Code
             this.username = username;
             
             // Assign a random hex color to player
-            this.color = string.Format("#{0:X6}", Game.random.Next(0x1000000));
+            this.color = string.Format("#{0:X6}", Game.Random.Next(0x1000000));
+        }
+
+        // Generate random coordinates for player
+        public void GenerateCoordinates(int mapWidth, int mapHeight)
+        {
+            this.x = Game.Random.Next(0, mapWidth);
+            this.y = Game.Random.Next(0, mapHeight);
         }
 
         public async Task SendData(object data)
