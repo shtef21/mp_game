@@ -91,6 +91,24 @@ namespace tps_game.Code
             });
         }
 
+        public string GetPlayerId(int y, int x)
+        {
+            if (y >= 0 && y < height && x >= 0 && x < width)
+            {
+                return GetPlayerId(map[y, x]);
+            }
+            return string.Empty;
+        }
+
+        public string GetPlayerId(string block)
+        {
+            if (block.Contains("-"))
+            {
+                return block.Split("-")[1];
+            }
+            return string.Empty;
+        }
+
         public bool IsTerrain(int y, int x)
         {
             if (y >= 0 && y < height && x >= 0 && x < width)
@@ -206,6 +224,11 @@ namespace tps_game.Code
             {
                 expandTerritoryInit(player);
             }
+
+            // Now validate all territories on map
+            // TODO:
+            //      Improve - Can I only validate territories around current player's block?
+            validateTerritoriesInit();
         }
 
         // Get blocks up-left-right-down of the specified position (only take first char)
@@ -284,6 +307,78 @@ namespace tps_game.Code
             expandTerritory(player, y + 1, x, ref isValidTerritory, ref visited); // Down
             expandTerritory(player, y, x - 1, ref isValidTerritory, ref visited); // Left
             expandTerritory(player, y, x + 1, ref isValidTerritory, ref visited); // Right
+
+            // Now return from this block
+            return;
+        }
+
+        // Check if all territories are connected to their player, otherwise remove them
+        void validateTerritoriesInit()
+        {
+            HashSet<(int, int)> processed = new HashSet<(int, int)>();
+
+            HashSet<(int, int)> visited = new HashSet<(int, int)>();
+            bool playerFound = false;
+
+            ForEachBlock((block, y, x) =>
+            {
+                // If this block needs processing
+                if (IsTerritory(y, x, null) && processed.Contains((y, x)) == false)
+                {
+                    // Reset search
+                    visited.Clear();
+                    playerFound = false;
+                    string playerId = GetPlayerId(block);
+
+                    // Try to seek for territory starting from block (y, x)
+                    validateTerritory(playerId, y, x, ref playerFound, ref visited);
+
+                    if (playerFound == false)
+                    {
+                        // Player not connected to this territory, so delete it
+                        foreach((int, int) yxTuple in visited)
+                        {
+                            map[y, x] = terrainSkin;
+                        }
+                    }
+                    else
+                    {
+                        // Player is found, so do not touch territory,
+                        // but mark all blocks as processed
+                        foreach ((int, int) yxTuple in visited)
+                        {
+                            processed.Add(yxTuple);
+                        }
+                    }
+                }
+            });
+        }
+
+        void validateTerritory(string playerId, int y, int x, ref bool playerFound, ref HashSet<(int, int)> visited)
+        {
+            // Stop processing if:
+            // - block already visited
+            // - this is terrain
+            // - this block does not belong to player
+            if (visited.Contains((y, x)) || IsTerrain(y, x) || GetPlayerId(y, x) != playerId)
+            {
+                return;
+            }
+
+            // If this is player's main block, mark it, but keep looking for territory
+            if (IsPlayer(y, x, null) && GetPlayerId(y, x) == playerId)
+            {
+                playerFound = true;
+            }
+
+            // Mark block as visited
+            visited.Add((y, x));
+
+            // Try to expand territory in all 4 directions from the current block
+            validateTerritory(playerId, y - 1, x, ref playerFound, ref visited); // Up
+            validateTerritory(playerId, y + 1, x, ref playerFound, ref visited); // Down
+            validateTerritory(playerId, y, x - 1, ref playerFound, ref visited); // Left
+            validateTerritory(playerId, y, x + 1, ref playerFound, ref visited); // Right
 
             // Now return from this block
             return;
