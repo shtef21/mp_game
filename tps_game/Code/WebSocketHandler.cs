@@ -39,7 +39,7 @@ namespace tps_game.Code
             });
 
             // Send update to all players
-            await game.SendUpdate();
+            _ = game.BroadcastSummary();
 
             // Reading loop
             while (connectionAlive)
@@ -110,7 +110,7 @@ namespace tps_game.Code
 
                         if (successfulMove)
                         {
-                            await game.SendUpdate();
+                            _ = game.BroadcastSummary();
                         }
                     }
                 }
@@ -118,7 +118,7 @@ namespace tps_game.Code
 
             Console.WriteLine($"User \"{username}\" disconnected.");
             game.RemovePlayer(player);
-            await game.SendUpdate();
+            _ = game.BroadcastSummary();
 
         }
 

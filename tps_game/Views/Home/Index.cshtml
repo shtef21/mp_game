@@ -25,6 +25,33 @@
         margin-top: 15px;
     }
 
+    #gameCanvasContainer:focus, #gameCanvasContainer *:focus {
+        outline: none;
+    }
+
+    #playersContainer {
+        font-family: monospace;
+        font-size: 1rem;
+        margin: 0 auto;
+    }
+
+    #ulPlayers > li {
+        margin-bottom: 5px;
+    } 
+
+    #playersContainer .player-color {
+        display: inline-block;
+        min-width: 25px;
+        text-align: center;
+        font-size: 1.2rem;
+        font-weight: 600;
+        padding: 0 5px;
+        border-left: 2px solid transparent;
+        border-top: 2px solid transparent;
+        border-right: 2px solid rgba(0, 0, 0, 0.5);
+        border-bottom: 2px solid rgba(0, 0, 0, 0.5);
+    }
+
     #bLeft {
         /*margin-right: -4px;*/
     }
@@ -84,7 +111,7 @@
         <i class="fa-solid fa-arrow-up"></i>
     </button>
 
-    <canvas id="gameCanvas" class="inline-block" tabindex="0" style="margin: 0 auto;"></canvas>
+    <canvas id="gameCanvas" class="inline-block" style="margin: 0 auto;" tabindex="0"></canvas>
 
     <!-- Down -->
     <button id="bDown" class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-500 rounded" data-move="S">
@@ -96,6 +123,11 @@
         <i class="fa-solid fa-arrow-right"></i>
     </button>
 
+</div>
+
+<!-- Players list -->
+<div id="playersContainer">
+    <ul id="ulPlayers"></ul>
 </div>
 
 <!-- Logs -->
@@ -112,6 +144,7 @@
 
 <script>
 
+    var socket = null;
     var ctx = gameCanvas.getContext("2d");
     let pid = null; // Player's PID
 
@@ -132,13 +165,18 @@
     function connect() {
 
         const myUsername = username_i.value;
-        var url = 'wss://' + location.host;
+        var protocol = 'wss://';
         var usernameComponent = '?username=' + encodeURIComponent(myUsername);
-        var socket = new WebSocket(url + usernameComponent);
+        
+        if (location.protocol !== 'https:') {
+            protocol = 'ws://';
+        }
+        let wsUrl = protocol + location.host + usernameComponent;
+        socket = new WebSocket(wsUrl);
 
         socket.addEventListener('open', function(event) {
 
-            addLog('Connected to ' + url);
+            addLog('Connected to ' + wsUrl);
             loginForm.classList.add('hidden');
             mainHeading.classList.add('hidden');
             gameCanvasContainer.classList.remove('hidden');
@@ -151,24 +189,6 @@
                     button = button.parentElement;
                 }
                 socket.send(button.dataset.move);
-            }
-
-            gameCanvas.onkeydown = function (event) {
-
-                addLog('Key code: ' + event.keyCode);
-
-                if (event.keyCode == 87 || event.keyCode == 38) {
-                    socket.send('W'); // W or arrow up
-                }
-                else if (event.keyCode == 65 || event.keyCode == 37) {
-                    socket.send('A'); // A or arrow left
-                }
-                else if (event.keyCode == 83 || event.keyCode == 40) {
-                    socket.send('S'); // S or arrow down
-                }
-                else if (event.keyCode == 68 || event.keyCode == 39) {
-                    socket.send('D'); // D or arrow right
-                }
             }
         });
 
@@ -187,11 +207,10 @@
         });
 
         socket.addEventListener('close', function(event) {
-            addLog('Connection to ' + url + ' closed.');
+            addLog('Connection to ' + wsUrl + ' closed.');
             loginForm.classList.remove('hidden');
             mainHeading.classList.remove('hidden');
             gameCanvasContainer.classList.add('hidden');
-            gameCanvas.onkeydown = null;
             bUp.onclick = bLeft.onclick = bDown.onclick = bRight.onclick = null
         });
     }
@@ -257,10 +276,24 @@
         if (obj.type == 'ID') {
             pid = obj.ID;
         }
-        else if (obj.type == 'map') {
+        else if (obj.type == 'summary') {
 
-            let mapWidth = obj.width;
-            let mapHeight = obj.height;
+            // First show players count
+            ulPlayers.innerHTML = '';
+            for (let player of obj.players) {
+
+                let playerLi = document.createElement('li');
+                playerLi.classList.add('item-player');
+                playerLi.innerText = player.username;
+                playerLi.insertAdjacentHTML('afterbegin', '<span class="player-color" style="background: ' + player.color + '">' + player.territoryCount + '</span> ');
+
+                ulPlayers.insertAdjacentElement('beforeend', playerLi);
+            }
+
+            // Now process the map
+
+            let mapWidth = obj.mapWidth;
+            let mapHeight = obj.mapHeight;
             let blockSize = gameCanvas.height / mapHeight; // Block size in pixels
 
             let currRow = 0;
@@ -328,11 +361,6 @@
     // Initialize page
     document.addEventListener('DOMContentLoaded', function() {
 
-        // Only show logs on localhost
-        if (location.hostname == 'localhost') {
-            logContainer.classList.remove('hidden');
-        }
-
         // Initialize the input form
         username_i.value = '';
         username_i.addEventListener('keyup', function() {
@@ -341,6 +369,33 @@
             }
             else {
                 signInButton.disabled = true;
+            }
+        });
+
+        // Initialize onclicks
+        document.addEventListener('keydown', function (event) {
+
+            if (event.target == gameCanvasContainer || gameCanvasContainer.contains(event.target)) {
+                // Click inside game area detected
+
+                addLog('Key code: ' + event.keyCode);
+
+                if (gameCanvasContainer.classList.contains('hidden') == false) {
+                    // Game is active
+
+                    if (event.keyCode == 87 || event.keyCode == 38) {
+                        socket.send('W'); // W or arrow up
+                    }
+                    else if (event.keyCode == 65 || event.keyCode == 37) {
+                        socket.send('A'); // A or arrow left
+                    }
+                    else if (event.keyCode == 83 || event.keyCode == 40) {
+                        socket.send('S'); // S or arrow down
+                    }
+                    else if (event.keyCode == 68 || event.keyCode == 39) {
+                        socket.send('D'); // D or arrow right
+                    }
+                }
             }
         });
 
@@ -356,9 +411,18 @@
         bUp.style.width = (cWidth + 2 * 50) + 'px';
         bDown.style.width = (cWidth + 2 * 50) + 'px';
 
-        // Try to login with 'test'
-        username_i.value = 'test';
-        connect();
+        // Player list display
+        playersContainer.style.width = (cWidth + 2 * 50) + 'px';
+        
+
+        // Only show logs on localhost
+        if (location.hostname == 'localhost') {
+            logContainer.classList.remove('hidden');
+        
+            // Try to login with 'test'
+            username_i.value = 'test';
+            connect();
+        }
 
     });
 

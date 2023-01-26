@@ -126,18 +126,18 @@ namespace tps_game.Code
             return false;
         }
 
-        public bool IsPlayerOrTerritory(int y, int x, Player? player)
+        public bool IsTerritory(int y, int x, Player? player)
         {
             if (y >= 0 && y < height && x >= 0 && x < width)
             {
-                return IsPlayerOrTerritory(map[y, x], player);
+                return IsTerritory(map[y, x], player);
             }
             return false;
         }
 
-        public bool IsPlayerOrTerritory(string block, Player? player)
+        public bool IsTerritory(string block, Player? player)
         {
-            if (block[0] == 'p' || block[0] == 't')
+            if (block[0] == 't')
             {
                 if (player == null || block.Split("-")[1] == player.ID.ToString())
                 {
@@ -147,12 +147,35 @@ namespace tps_game.Code
             return false;
         }
 
+        public bool IsPlayerOrTerritory(int y, int x, Player? player)
+        {
+            return IsPlayer(y, x, player) || IsTerritory(y, x, player);
+        }
+
+        public bool IsPlayerOrTerritory(string block, Player? player)
+        {
+            return IsPlayer(block, player) || IsTerritory(block, player);
+        }
+
         public void DrawPlayer(Player player)
         {
             if (player.y >= 0 && player.y < height && player.x >= 0 && player.x < width)
             {
                 map[player.y, player.x] = $"p-{player.ID}-{player.color}";
             }
+        }
+
+        public int CountTerritory(Player player)
+        {
+            int count = 0;
+            ForEachBlock((block, y, x) =>
+            {
+                if (IsTerritory(block, player))
+                {
+                    ++count;
+                }
+            });
+            return count;
         }
 
         void DrawTerritory(int y, int x, Player player)

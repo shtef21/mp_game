@@ -58,7 +58,7 @@ namespace tps_game.Code
             return isAvailable;
         }
 
-        public async Task SendUpdate()
+        public void BroadcastSummary()
         {
             // First display every player's position on the map
             foreach (Player player in players)
@@ -77,17 +77,26 @@ namespace tps_game.Code
             // Prepare JSON summary
             string update = Newtonsoft.Json.JsonConvert.SerializeObject(new
             {
-                type = "map",
-                height = map.height,
-                width = map.width,
+                type = "summary",
+                mapHeight = map.height,
+                mapWidth = map.width,
                 map = map.Summarize(),
-                turn = playerTurn
+                turn = playerTurn,
+                players = players.Select(player =>
+                {
+                    return new
+                    {
+                        username = player.username,
+                        color = player.color,
+                        territoryCount = map.CountTerritory(player)
+                    };
+                })
             });
 
-            // Send JSON to each player
+            // Send JSON to all players (async)
             for (int i = 0; i < players.Count; ++i)
             {
-                await players[i].SendJSON(update);
+                _ = players[i].SendJSON(update);
             }
         }
 
