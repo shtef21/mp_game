@@ -2,7 +2,7 @@
 
 namespace tps_game.Code
 {
-    public class WebSocketHandler
+    public class old_WebSocketHandler
     {
         static Game game = new Game(10, 10);
 
@@ -32,7 +32,7 @@ namespace tps_game.Code
 
             // Initialize the player on the server
             var player = game.AddPlayer(socket, username);
-            await player.SendData(new
+            await player.SendJSON(new
             {
                 type = "ID",
                 ID = player.ID

@@ -3,37 +3,37 @@ using System.Numerics;
 
 namespace tps_game.Code
 {
-    public class Player
+    public class SnakePlayer
     {
-        private static ulong idCounter = 0;
-
-        // Obsolete: should remove
-        public readonly ulong ID;
-
         public string username;
-        public int x, y;
+        public List<(int, int)> positions;
         public string color;
-
-        public int movesLeft = 0;
 
         // Underlying WebSocket connection with the client
         WebSocket socket;
 
-        public Player(WebSocket socket, string username)
+        public SnakePlayer(WebSocket socket, string username)
         {
-            this.ID = idCounter++;
             this.socket = socket;
             this.username = username;
-            
+
+            positions = new List<(int, int)>();
+
             // Assign a random hex color to player
             this.color = string.Format("#{0:X6}", Game.Random.Next(0x1000000));
         }
 
         // Generate random coordinates for player
-        public void GenerateCoordinates(int mapWidth, int mapHeight)
+        public void GenerateRandomPosition(int mapWidth, int mapHeight, int snakeLength = 3)
         {
-            this.x = Game.Random.Next(0, mapWidth);
-            this.y = Game.Random.Next(0, mapHeight);
+            int startY, startX;
+            startY = WebSocketRouter.Random.Next(0, mapHeight);
+            startX = WebSocketRouter.Random.Next(snakeLength - 1, mapWidth);
+            positions.Clear();
+            for (int i = 0; i < snakeLength; ++i)
+            {
+                positions.Add((startY, startX + snakeLength - i));
+            }
         }
 
         /// <summary>

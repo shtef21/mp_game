@@ -27,7 +27,8 @@ app.Use(async (context, next) =>
 {
     if (context.WebSockets.IsWebSocketRequest)
     {
-        await WebSocketHandler.HandleWebSocketRequest(context);
+        await old_WebSocketHandler.HandleWebSocketRequest(context);
+        //await WebSocketRouter.HandleWebSocketRequest(context);
     }
     else
     {
@@ -38,5 +39,6 @@ app.Use(async (context, next) =>
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+//pattern: "{controller=Game}/{action=Snake}/{id?}");
 
 app.Run();
