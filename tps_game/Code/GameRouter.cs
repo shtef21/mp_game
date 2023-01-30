@@ -14,6 +14,13 @@ namespace tps_game.Code
         public static readonly bool debugMode = false;
 #endif
 
+        static SnakeGame snakeGame = new SnakeGame(10, 10);
+
+        ~GameRouter()
+        {
+            snakeGame.gameActive = false;
+        }
+
         public static async Task HandleWebSocketRequest(HttpContext context)
         {
             // Accept client's underlyig web socket and assign it a GUID
@@ -146,7 +153,6 @@ namespace tps_game.Code
         }
 
 
-        static SnakeGame snakeGame = new SnakeGame(10, 10);
         private static IGame? FindGame(string connectionRoute)
         {
             if (connectionRoute == "game/snake")

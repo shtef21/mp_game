@@ -8,6 +8,7 @@ namespace tps_game.Code.Games
     {
         Dictionary<Guid, Snake> players = new Dictionary<Guid, Snake>();
         (int, int)? food;
+        public bool gameActive = true;
 
         int mapHeight, mapWidth;
 
@@ -24,7 +25,7 @@ namespace tps_game.Code.Games
         {
             var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
 
-            while(true)
+            while(gameActive)
             {
                 Console.WriteLine("Timer...");
                 foreach (Snake player in players.Values)
@@ -71,6 +72,13 @@ namespace tps_game.Code.Games
 
             // Send new map data to all players
             BroadcastSummary();
+
+            // New player connected, start the timer again
+            if (gameActive == false)
+            {
+                gameActive = true;
+                StartTimer();
+            }
             
             return null;
         }
@@ -78,6 +86,15 @@ namespace tps_game.Code.Games
         public void OnPlayerDisconnected(Guid clientGuid)
         {
             players.Remove(clientGuid);
+
+            // Send new map data to all players
+            BroadcastSummary();
+
+            // No players online, stop updates
+            if (players.Count == 0)
+            {
+                gameActive = false;
+            }
         }
 
         public void OnPlayerMessage(Guid clientGuid, string message)
