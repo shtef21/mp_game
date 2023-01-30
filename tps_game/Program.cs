@@ -30,7 +30,7 @@ app.Use(async (context, next) =>
         if (context.Request.Path.ToString().StartsWith("/game"))
         {
             // New game(s)
-            await tps_game.Code.WebSocketRouter.HandleWebSocketRequest(context);
+            await tps_game.Code.GameRouter.HandleWebSocketRequest(context);
         }
         else
         {

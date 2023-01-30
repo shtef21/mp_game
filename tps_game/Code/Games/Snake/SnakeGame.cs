@@ -1,10 +1,13 @@
 ﻿using System.Net.WebSockets;
+using System.Linq;
+using System.Timers;
 
 namespace tps_game.Code.Games
 {
     public class SnakeGame : IGame
     {
         Dictionary<Guid, Snake> players = new Dictionary<Guid, Snake>();
+        (int, int)? food;
 
         int mapHeight, mapWidth;
 
@@ -12,6 +15,26 @@ namespace tps_game.Code.Games
         {
             this.mapHeight = mapHeight;
             this.mapWidth = mapWidth;
+            this.food = null;
+
+            StartTimer();
+        }
+
+        async Task StartTimer()
+        {
+            var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+
+            while(true)
+            {
+                Console.WriteLine("Timer...");
+                foreach (Snake player in players.Values)
+                {
+                    player.Crawl();
+                }
+                BroadcastSummary();
+
+                await timer.WaitForNextTickAsync();
+            }
         }
 
         public string? OnPlayerConnected(Guid clientGuid, HttpContext context, WebSocket socket)
@@ -43,6 +66,9 @@ namespace tps_game.Code.Games
             // Save player
             players.Add(clientGuid, player);
 
+            // Try to create food
+            TryGenerateFood();
+
             // Send new map data to all players
             BroadcastSummary();
             
@@ -66,11 +92,29 @@ namespace tps_game.Code.Games
 
         private void BroadcastSummary()
         {
+            var foodData = (object)null;
+            if (food != null)
+            {
+                foodData = new
+                {
+                    y = food.Value.Item1,
+                    x = food.Value.Item2
+                };
+            }
+
             var summary = Newtonsoft.Json.JsonConvert.SerializeObject(new {
+                mapHeight,
+                mapWidth,
+                food = foodData,
                 players = players.Values.Select(player => new {
                     player.username,
                     player.color,
-                    positions = player.GetPositions()
+                    positions = player.GetPositions().Select(yx => new
+                    {
+                        y = yx.Item1,
+                        x = yx.Item2
+                    }),
+                    direction = player.GetDirection()
                 })
             });
             var summaryBytes = System.Text.Encoding.UTF8.GetBytes(summary);
@@ -78,6 +122,25 @@ namespace tps_game.Code.Games
             foreach(Snake player in players.Values)
             {
                 _ = player.SendText(summaryBytes);
+            }
+        }
+
+        void TryGenerateFood()
+        {
+            int attempts = 5;
+            (int, int) tempCoord = (-1, -1);
+
+            while (attempts > 0)
+            {
+                tempCoord = (Static.Random.Next(0, mapHeight), Static.Random.Next(0, mapWidth));
+
+                int playersConflicting = players.Values.Where(snake => snake.GetPositions().Contains(tempCoord)).Count();
+                if (playersConflicting == 0)
+                {
+                    food = tempCoord;
+                    break;
+                }
+                --attempts;
             }
         }
 

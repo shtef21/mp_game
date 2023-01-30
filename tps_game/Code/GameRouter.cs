@@ -3,7 +3,7 @@ using tps_game.Code.Games;
 
 namespace tps_game.Code
 {
-    public class WebSocketRouter
+    public class GameRouter
     {
         /// <summary>
         /// If true, log client events.
@@ -13,7 +13,6 @@ namespace tps_game.Code
 #else
         public static readonly bool debugMode = false;
 #endif
-
 
         public static async Task HandleWebSocketRequest(HttpContext context)
         {
@@ -146,11 +145,13 @@ namespace tps_game.Code
             Console.WriteLine(": " + text);
         }
 
+
+        static SnakeGame snakeGame = new SnakeGame(10, 10);
         private static IGame? FindGame(string connectionRoute)
         {
-            if (connectionRoute == "snake")
+            if (connectionRoute == "game/snake")
             {
-                return new SnakeGame(10, 10);
+                return snakeGame;
             }
             return null;
         }

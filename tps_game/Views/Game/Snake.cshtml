@@ -3,20 +3,31 @@
 }
 
 <style>
+    #gameCanvas {
+        border: 1px solid black;
+    }
     #logs {
         background: black;
         color: white;
     }
 </style>
 
+<div class="max-w-[500px] mx-auto p-3 text-center">
+    <canvas id="gameCanvas" class="inline-block"></canvas>
+</div>
+
 <div class="max-w-[500px] mx-auto p-3">
     <pre id="logs" class="p-3"></pre>
 </div>
 
 <script>
+
+    let gameWidth = 350;
+    let gameHeight = 250;
+
     logs.innerText = 'Logs go here';
 
-    var socket = new WebSocket('ws://' + location.host + '/game/snake?username=Test');
+    var socket = new WebSocket('wss://' + location.host + '/game/snake?username=Test');
 
     socket.onopen = function() {
         logs.innerText = 'Connection open.';
@@ -27,12 +38,103 @@
     }
 
     socket.onmessage = function(event) {
-        logs.innerText = JSON.stringify(JSON.parse(event.data), null, 2);
+
+        let summary = JSON.parse(event.data);
+        logs.innerText = JSON.stringify(summary, null, 2);
+
+        let blockWidth = gameWidth / summary.mapWidth;
+        let blockHeight = gameHeight / summary.mapHeight;
+
+        // Draw map first
+        for (let x = 0; x < summary.mapWidth; ++x) {
+            for (let y = 0; y < summary.mapHeight; ++y) {
+                drawBlock(x, y, blockWidth, blockHeight, 'green');
+            }
+        }
+
+        // Draw snakes
+        for (let i = 0; i < summary.players.length; ++i) {
+
+            let p = summary.players[i];
+            
+            for (let j = 0; j < p.positions.length; ++j) {
+                let pos = p.positions[j];
+                drawBlock(pos.x, pos.y, blockWidth, blockHeight, p.color);
+            }
+
+            drawEyes(p.positions[0].x, p.positions[0].y, blockWidth, blockHeight, p.direction);
+        }
+
+        if (summary.food) {
+            drawFood(summary.food.x, summary.food.y, blockWidth, blockHeight);
+        }
     }
 
     socket.onerror = function(event) {
         logs.innerText = 'Error happened. Check console for details.';
         console.error(event);
+    }
+
+    // Canvas
+    gameCanvas.width = gameWidth;
+    gameCanvas.height = gameHeight;
+    let ctx = gameCanvas.getContext('2d');
+
+    function drawBlock(xCoord, yCoord, width, height, color) {
+        
+        // Draw border
+        ctx.fillStyle = 'black';
+        ctx.fillRect(xCoord * width, yCoord * height, width, height);
+
+        // Draw block
+        ctx.fillStyle = color;
+        ctx.fillRect(xCoord * width + 1, yCoord * height + 1, width - 1, height - 1);
+    }
+
+    function drawEyes(xCoord, yCoord, width, height, direction) {
+
+        if ('w a s d'.split(' ').includes(direction) == false) {
+            console.log('Cannot draw eyes for player. Direction "' + direction + '" is invalid.');
+            return;
+        }
+
+        // Calculate eye positions based on the part of the eye
+        let diff = {
+            x1: 'was'.includes(direction) ? 0.2 : 0.7,
+            y1: 'wad'.includes(direction) ? 0.2 : 0.7,
+            x2: 'ws'.includes(direction) ? 0.6 : 'a' == direction ? 0.2 : 0.7,
+            y2: 'asd'.includes(direction) ? 0.6 : 0.2,
+            w: 'ws'.includes(direction) ? 0.2 : 0.1,
+            h: 'ws'.includes(direction) ? 0.1 : 0.2
+        };
+
+        // Draw eyes
+        ctx.fillStyle = 'black';
+        ctx.fillRect(
+            xCoord * width + 1 + (width * diff.x1),
+            yCoord * height + 1 + (height * diff.y1),
+            width * diff.w,
+            height * diff.h
+        );
+        ctx.fillRect(
+            xCoord * width + 1 + (width * diff.x2),
+            yCoord * height + 1 + (height * diff.y2),
+            width * diff.w,
+            height * diff.h
+        );
+    }
+
+    function drawFood(xCoord, yCoord, blockWidth, blockHeight) {
+        ctx.beginPath();
+        ctx.fillStyle = 'red';
+        ctx.arc(
+            blockWidth * (xCoord + 0.5),
+            blockHeight * (yCoord + 0.5),
+            Math.min(blockWidth, blockHeight) * 0.25,
+            0,
+            Math.PI * 2
+        );
+        ctx.fill();
     }
 
 </script>

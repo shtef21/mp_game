@@ -20,12 +20,16 @@ namespace tps_game.Code.Games
         List<(int, int)> positions;
 
         SnakeDirection direction;
+        readonly int mapHeight;
+        readonly int mapWidth;
 
         public Snake (HttpContext httpContext, WebSocket webSocket, string username, int mapHeight, int mapWidth, (int, int) spawnCoordinate)
         {
             this.httpContext = httpContext;
             this.webSocket = webSocket;
             this.username = username;
+            this.mapHeight = mapHeight;
+            this.mapWidth = mapWidth;
             this.color = string.Format("#{0:X6}", Static.Random.Next(0x1000000));
             this.direction = SnakeDirection.Right;
             this.positions = new List<(int, int)>() {
@@ -61,18 +65,28 @@ namespace tps_game.Code.Games
                 positions[0].Item2 + xDiff
             );
 
+            if (nextPosition.Item1 < 0 || nextPosition.Item1 > mapHeight - 1 ||
+                nextPosition.Item2 < 0 || nextPosition.Item2 > mapWidth - 1)
+            {
+                // Cannot go past map edge
+                return;
+            }
+
             // Save tail in case the snake should be extended
             (int, int) previousTailPosition = positions[positions.Count - 1];
 
             // Move snake
-            for (int i = 1; i < positions.Count; ++i)
+            for (int i = positions.Count - 1; i > 0; --i)
             {
                 positions[i] = positions[i - 1];
             }
             positions[0] = nextPosition;
 
             // If food eaten, extend the snake (to previous tail position)
-            positions.Add(previousTailPosition);
+            if (eatFood)
+            {
+                positions.Add(previousTailPosition);
+            }
         }
 
         // Change movement direction
@@ -103,6 +117,23 @@ namespace tps_game.Code.Games
                     break;
                 default:
                     break;
+            }
+        }
+
+        public string GetDirection()
+        {
+            switch(direction)
+            {
+                case SnakeDirection.Up:
+                    return "w";
+                case SnakeDirection.Down:
+                    return "s";
+                case SnakeDirection.Left:
+                    return "a";
+                case SnakeDirection.Right:
+                    return "d";
+                default:
+                    return string.Empty;
             }
         }
 
