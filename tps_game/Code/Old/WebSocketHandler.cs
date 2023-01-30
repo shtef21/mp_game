@@ -1,8 +1,8 @@
 ﻿using System.Net.WebSockets;
 
-namespace tps_game.Code
+namespace tps_game.Code.Old
 {
-    public class old_WebSocketHandler
+    public class WebSocketHandler
     {
         static Game game = new Game(10, 10);
 

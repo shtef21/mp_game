@@ -27,8 +27,16 @@ app.Use(async (context, next) =>
 {
     if (context.WebSockets.IsWebSocketRequest)
     {
-        await old_WebSocketHandler.HandleWebSocketRequest(context);
-        //await WebSocketRouter.HandleWebSocketRequest(context);
+        if (context.Request.Path.ToString().StartsWith("/game"))
+        {
+            // New game(s)
+            await tps_game.Code.WebSocketRouter.HandleWebSocketRequest(context);
+        }
+        else
+        {
+            // Old game
+            await tps_game.Code.Old.WebSocketHandler.HandleWebSocketRequest(context);
+        }
     }
     else
     {

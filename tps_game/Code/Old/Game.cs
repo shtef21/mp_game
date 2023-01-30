@@ -1,7 +1,7 @@
 ﻿using System.Net.WebSockets;
 using System.Numerics;
 
-namespace tps_game.Code
+namespace tps_game.Code.Old
 {
     public class Game
     {

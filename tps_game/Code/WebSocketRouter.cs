@@ -5,8 +5,6 @@ namespace tps_game.Code
 {
     public class WebSocketRouter
     {
-        public static Random Random = new Random();
-
         /// <summary>
         /// If true, log client events.
         /// </summary>
@@ -105,7 +103,7 @@ namespace tps_game.Code
                     {
                         Log(clientGuid, $"${payload.Length} bytes received.");
                     }
-                    game.OnPlayerMessage(payload);
+                    game.OnPlayerMessage(clientGuid, payload);
                 }
                 else if (wsResponse.MessageType == WebSocketMessageType.Text)
                 {
@@ -116,7 +114,7 @@ namespace tps_game.Code
                     {
                         Log(clientGuid, $"\"{message}");
                     }
-                    game.OnPlayerMessage(message);
+                    game.OnPlayerMessage(clientGuid, message);
                 }
             }
 

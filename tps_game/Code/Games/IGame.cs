@@ -23,14 +23,15 @@ namespace tps_game.Code.Games
         /// <summary>
         /// A function that handles player text messages.
         /// </summary>
+        /// <param name="guid"> Client GUID. </param>
         /// <param name="message"> Client text message string. </param>
-        public void OnPlayerMessage(string message);
+        public void OnPlayerMessage(Guid clientGuid, string message);
 
         /// <summary>
         /// A function that handles player binary messages.
         /// </summary>
         /// <param name="payload"> Client text message bytes. </param>
-        public void OnPlayerMessage(byte[] payload);
+        public void OnPlayerMessage(Guid clientGuid, byte[] payload);
 
     }
 }
