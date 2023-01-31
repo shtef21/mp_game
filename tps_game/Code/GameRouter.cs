@@ -14,7 +14,7 @@ namespace tps_game.Code
         public static readonly bool debugMode = false;
 #endif
 
-        static SnakeGame snakeGame = new SnakeGame(10, 10);
+        static SnakeGame snakeGame = new SnakeGame(15, 15);
 
         ~GameRouter()
         {
@@ -118,7 +118,7 @@ namespace tps_game.Code
 
                     if (debugMode)
                     {
-                        Log(clientGuid, $"\"{message}");
+                        Log(clientGuid, $"\"{message}\"");
                     }
                     game.OnPlayerMessage(clientGuid, message);
                 }

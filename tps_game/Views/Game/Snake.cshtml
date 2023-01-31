@@ -6,14 +6,68 @@
     #gameCanvas {
         border: 1px solid black;
     }
+
     #logs {
         background: black;
         color: white;
     }
+
+    #bLeft {
+        /*margin-right: -4px;*/
+    }
+
+    #bUp {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 500px;
+        transform: translateX(-50%);
+    }
+
+    #bDown {
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        width: 500px;
+        transform: translateX(-50%);
+    }
+
+    #bRight {
+        /*margin-left: -4px;*/
+    }
 </style>
 
-<div class="max-w-[500px] mx-auto p-3 text-center">
+@*<div class="max-w-[500px] mx-auto p-3 text-center">
     <canvas id="gameCanvas" class="inline-block"></canvas>
+</div>*@
+
+<br />
+
+<!-- GAME -->
+<div id="gameCanvasContainer" class="relative py-[48px] mb-[25px] mx-auto text-center">
+
+    <!-- Left -->
+    <button id="bLeft" class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-500 rounded" data-move="A">
+        <i class="fa-solid fa-arrow-left"></i>
+    </button>
+
+    <!-- Up -->
+    <button id="bUp" class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-500 rounded" data-move="W">
+        <i class="fa-solid fa-arrow-up"></i>
+    </button>
+
+    <canvas id="gameCanvas" class="inline-block" style="margin: 0 auto;" tabindex="0"></canvas>
+
+    <!-- Down -->
+    <button id="bDown" class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-500 rounded" data-move="S">
+        <i class="fa-solid fa-arrow-down"></i>
+    </button>
+
+    <!-- Right -->
+    <button id="bRight" class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4 border-b-4 border-blue-700 hover:border-blue-500 rounded" data-move="D">
+        <i class="fa-solid fa-arrow-right"></i>
+    </button>
+
 </div>
 
 <div class="max-w-[500px] mx-auto p-3">
@@ -23,7 +77,7 @@
 <script>
 
     let gameWidth = 350;
-    let gameHeight = 250;
+    let gameHeight = 350;
 
     logs.innerText = 'Logs go here';
 
@@ -51,11 +105,12 @@
         let blockHeight = gameHeight / summary.mapHeight;
 
         // Draw map first
-        for (let x = 0; x < summary.mapWidth; ++x) {
-            for (let y = 0; y < summary.mapHeight; ++y) {
-                drawBlock(x, y, blockWidth, blockHeight, 'green');
-            }
-        }
+        //for (let x = 0; x < summary.mapWidth; ++x) {
+        //    for (let y = 0; y < summary.mapHeight; ++y) {
+        //        drawBlock(x, y, blockWidth, blockHeight, 'green');
+        //    }
+        //}
+        drawBlock(0, 0, gameWidth, gameHeight, 'green');
 
         // Draw snakes
         for (let i = 0; i < summary.players.length; ++i) {
@@ -65,6 +120,20 @@
             for (let j = 0; j < p.positions.length; ++j) {
                 let pos = p.positions[j];
                 drawBlock(pos.x, pos.y, blockWidth, blockHeight, p.color);
+            }
+
+            drawEyes(p.positions[0].x, p.positions[0].y, blockWidth, blockHeight, p.direction);
+        }
+
+        // Draw dead snakes
+        for (let i = 0; i < summary.corpses.length; ++i) {
+
+            let p = summary.corpses[i];
+
+            for (let j = 0; j < p.positions.length; ++j) {
+                let pos = p.positions[j];
+                //drawBlock(pos.x, pos.y, blockWidth, blockHeight, p.color);
+                drawBlock(pos.x, pos.y, blockWidth, blockHeight, 'gray');
             }
 
             drawEyes(p.positions[0].x, p.positions[0].y, blockWidth, blockHeight, p.direction);
@@ -87,13 +156,16 @@
 
     function drawBlock(xCoord, yCoord, width, height, color) {
         
-        // Draw border
-        ctx.fillStyle = 'black';
-        ctx.fillRect(xCoord * width, yCoord * height, width, height);
+        //// Draw border
+        //ctx.fillStyle = 'black';
+        //ctx.fillRect(xCoord * width, yCoord * height, width, height);
+        //// Draw block
+        //ctx.fillStyle = color;
+        //ctx.fillRect(xCoord * width + 1, yCoord * height + 1, width - 1, height - 1);
 
         // Draw block
         ctx.fillStyle = color;
-        ctx.fillRect(xCoord * width + 1, yCoord * height + 1, width - 1, height - 1);
+        ctx.fillRect(xCoord * width, yCoord * height, width, height);
     }
 
     function drawEyes(xCoord, yCoord, width, height, direction) {
@@ -108,7 +180,7 @@
             x1: 'was'.includes(direction) ? 0.2 : 0.7,
             y1: 'wad'.includes(direction) ? 0.2 : 0.7,
             x2: 'ws'.includes(direction) ? 0.6 : 'a' == direction ? 0.2 : 0.7,
-            y2: 'asd'.includes(direction) ? 0.6 : 0.2,
+            y2: 'ad'.includes(direction) ? 0.6 : 's' == direction ? 0.7 : 0.2,
             w: 'ws'.includes(direction) ? 0.2 : 0.1,
             h: 'ws'.includes(direction) ? 0.1 : 0.2
         };
@@ -141,5 +213,33 @@
         );
         ctx.fill();
     }
+
+    // On load
+    document.addEventListener('DOMContentLoaded', function() {
+
+        bUp.style.width = (gameWidth + 103) + 'px';
+        bDown.style.width = (gameWidth + 103) + 'px'
+        bLeft.style.height = gameHeight + 'px';
+        bRight.style.height = gameHeight + 'px';
+
+        bUp.onclick = bDown.onclick = bLeft.onclick = bRight.onclick = function(event) {
+            let button = event.target;
+            if (event.target.tagName !== 'BUTTON') {
+                button = event.target.parentElement;
+            }
+            
+            if (socket.readyState == socket.OPEN) {
+                socket.send(button.dataset.move.toLowerCase());
+            }
+        }
+
+        document.addEventListener('keydown', function(event) {
+            let key = event.key.toLowerCase();
+
+            if (socket.readyState == socket.OPEN) {
+                socket.send(key);
+            }
+        });
+    });
 
 </script>
