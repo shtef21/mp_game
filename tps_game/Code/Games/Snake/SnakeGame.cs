@@ -12,7 +12,7 @@ namespace tps_game.Code.Games
         (int, int)? foodCoordinate;
         public bool gameActive = true;
 
-        public static int gameRefreshRateMs = 350;
+        public static int gameRefreshRateMs = 750;
 
         int mapHeight, mapWidth;
 
