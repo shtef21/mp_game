@@ -86,7 +86,7 @@
         wsProtocol = 'wss://'
     }
     
-    let username = 'test-' + new Date().toISOString().substr(0, 8);
+    let username = 'test-' + Math.random();
     var socket = new WebSocket(wsProtocol + location.host + '/game/snake?username=' + encodeURIComponent(username));
 
     socket.onopen = function() {
