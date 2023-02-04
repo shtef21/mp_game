@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - tps_game</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css" integrity="sha512-MV7K8+y+gLIBoVD59lQIYicR65iaqukzvf/nwasF0nqhPay5w/9lJmVM2hMDcnK1OnMGCdVK+iQrJ7lzPJQd1w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+</head>
+<body>
+    
+    <style>
+
+        body {
+            overflow-x: hidden;
+        }
+    
+        #logs {
+            background: black;
+            color: white;
+        }
+    
+        #buttonContainer {
+            background: rgb(239 68 68);
+            padding: 3px;
+            height: 25vh;
+        }
+
+        #buttonContainer .gameButton {
+            display: inline-block;
+            height: calc(8.34vh - 5px);
+            width: 100%;
+            margin-bottom: 3px;
+            text-align: center;
+        }
+
+        #controlsContainer {
+            background: #1d4ed8;
+            padding: 3px;
+            height: 25vh;
+        }
+    
+        #bUp, #bLeft, #bRight, #bDown {
+            position: absolute;
+            height: calc(8.34vh - 3px);
+        }
+    
+        #bUp {
+            top: 0;
+            left: 0;
+            width: 100%;
+        }
+    
+        #bDown {
+            bottom: 0;
+            left: 0;
+            width: 100%;
+        }
+    
+        #bLeft {
+            top: 50%;
+            left: 25%;
+            transform: translate(-50%, -50%);
+            width: calc(50% - 6px);
+        }
+    
+        #bRight {
+            top: 50%;
+            left: 75%;
+            transform: translate(-50%, -50%);
+            width: calc(50% - 6px);
+        }
+    
+        #gameCanvasContainer {
+            text-align: center;
+            width: 100%;
+        }
+    </style>
+    
+    <!-- GAME -->
+    <div id="gameCanvasContainer">
+        <canvas id="gameCanvas" class="inline" tabindex="0"></canvas>
+    </div>
+    
+    <div id="controlsContainer" class="relative w-full">
+    
+        <!-- Up -->
+        <button id="bUp" class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4" data-move="W">
+            <i class="fa-solid fa-arrow-up"></i>
+        </button>
+    
+        <!-- Left -->
+        <button id="bLeft" class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4" data-move="A">
+            <i class="fa-solid fa-arrow-left"></i>
+        </button>
+    
+        <!-- Right -->
+        <button id="bRight" class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4" data-move="D">
+            <i class="fa-solid fa-arrow-right"></i>
+        </button>
+    
+        <!-- Down -->
+        <button id="bDown" class="bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 px-4" data-move="S">
+            <i class="fa-solid fa-arrow-down"></i>
+        </button>
+    
+    </div>
+    
+    <div id="buttonContainer" class="relative w-full">
+
+        <!-- Restart -->
+        <button class="gameButton bg-red-700 hover:bg-red-400 text-white font-bold py-2 px-4" onclick="location.reload();">
+            <i class="fa-solid fa-repeat"></i>
+        </button>
+
+        <!-- Go back -->
+        <button class="gameButton bg-red-700 hover:bg-red-400 text-white font-bold py-2 px-4" onclick="window.open('/', '_self');">
+            <i class="fa-regular fa-circle-xmark"></i>
+        </button>
+
+        <!-- Go back -->
+        <button class="gameButton bg-green-400 text-white font-bold py-2 px-4">
+            Ping:
+            <span id="pingLog">
+                <i class="fas fa-spinner fa-spin"></i>
+            </span>
+        </button>
+
+
+    </div>
+
+    <div class="max-w-[500px] mx-auto p-3">
+        <pre id="logs" class="p-3"></pre>
+    </div>
+    
+    <script>
+    
+        let gameWidth = 350;
+        let gameHeight = 350;
+    
+        (function() {
+            var width = window.innerWidth || screen.width;
+            var height = window.innerHeight || screen.height;
+    
+            gameHeight = height / 2;
+            gameWidth = gameHeight - 2;
+        })()
+    
+    
+        logs.innerText = 'Logs go here';
+    
+        let wsProtocol = 'ws://';
+        if (location.protocol === 'https:') {
+            wsProtocol = 'wss://'
+        }
+        
+        let username = 'test-' + Math.random();
+        var socket = new WebSocket(wsProtocol + location.host + '/game/snake?username=' + encodeURIComponent(username));
+    
+        socket.onopen = function() {
+            logs.innerText = 'Connection open.';
+        }
+    
+        socket.onclose = function() {
+            logs.innerText = 'Connection closed.';
+        }
+    
+        socket.onmessage = function(event) {
+    
+            let summary = JSON.parse(event.data);
+            logs.innerText = JSON.stringify(summary, null, 2);
+
+            // Set ping data
+            let dateSent = new Date(summary.timestamp);
+            let pingMs = new Date() - dateSent;
+            if (pingMs < 1) {
+                pingMs = '<1';
+            }
+            pingLog.innerText = pingMs + 'ms';
+    
+            let blockWidth = gameWidth / summary.mapWidth;
+            let blockHeight = gameHeight / summary.mapHeight;
+    
+            // Draw map first
+            drawBlock(0, 0, gameWidth, gameHeight, 'green');
+    
+            // Draw snakes
+            for (let i = 0; i < summary.players.length; ++i) {
+    
+                let p = summary.players[i];
+                
+                // Draw body
+                for (let j = 1; j < p.positions.length; ++j) {
+                    let pos = p.positions[j];
+                    drawBlock(pos.x, pos.y, blockWidth, blockHeight, p.color);
+                }
+
+                // Draw head
+                let isPlayer = p.username == username;
+                let pos_0 = p.positions[0];
+                drawBlock(pos_0.x, pos_0.y, blockWidth, blockHeight, p.color, isPlayer);
+    
+                drawEyes(p.positions[0].x, p.positions[0].y, blockWidth, blockHeight, p.direction);
+            }
+    
+            // Draw dead snakes
+            for (let i = 0; i < summary.corpses.length; ++i) {
+    
+                let p = summary.corpses[i];
+    
+                for (let j = 0; j < p.positions.length; ++j) {
+                    let pos = p.positions[j];
+                    drawBlock(pos.x, pos.y, blockWidth, blockHeight, 'gray');
+                }
+    
+                drawEyes(p.positions[0].x, p.positions[0].y, blockWidth, blockHeight, p.direction);
+            }
+    
+            if (summary.food) {
+                drawFood(summary.food.x, summary.food.y, blockWidth, blockHeight);
+            }
+        }
+    
+        socket.onerror = function(event) {
+            logs.innerText = 'Error happened. Check console for details.';
+            console.error(event);
+        }
+    
+        // Canvas
+        gameCanvas.width = gameWidth;
+        gameCanvas.height = gameHeight;
+        let ctx = gameCanvas.getContext('2d');
+    
+        function drawBlock(xCoord, yCoord, width, height, color, isPlayer) {
+            
+            //// Draw border
+            //ctx.fillStyle = 'black';
+            //ctx.fillRect(xCoord * width, yCoord * height, width, height);
+            //// Draw block
+            //ctx.fillStyle = color;
+            //ctx.fillRect(xCoord * width + 1, yCoord * height + 1, width - 1, height - 1);
+    
+            // Draw block
+            if (isPlayer === true) {
+                ctx.fillStyle = 'red';
+                ctx.fillRect(xCoord * width - 2, yCoord * height - 2, width + 4, height + 4);
+            }
+            ctx.fillStyle = color;
+            ctx.fillRect(xCoord * width, yCoord * height, width, height);
+        }
+    
+        function drawEyes(xCoord, yCoord, width, height, direction) {
+    
+            if ('w a s d'.split(' ').includes(direction) == false) {
+                console.log('Cannot draw eyes for player. Direction "' + direction + '" is invalid.');
+                return;
+            }
+    
+            // Calculate eye positions based on the part of the eye
+            let diff = {
+                x1: 'was'.includes(direction) ? 0.2 : 0.7,
+                y1: 'wad'.includes(direction) ? 0.2 : 0.7,
+                x2: 'ws'.includes(direction) ? 0.6 : 'a' == direction ? 0.2 : 0.7,
+                y2: 'ad'.includes(direction) ? 0.6 : 's' == direction ? 0.7 : 0.2,
+                w: 'ws'.includes(direction) ? 0.2 : 0.1,
+                h: 'ws'.includes(direction) ? 0.1 : 0.2
+            };
+    
+            // Draw eyes
+            ctx.fillStyle = 'black';
+            ctx.fillRect(
+                xCoord * width + 1 + (width * diff.x1),
+                yCoord * height + 1 + (height * diff.y1),
+                width * diff.w,
+                height * diff.h
+            );
+            ctx.fillRect(
+                xCoord * width + 1 + (width * diff.x2),
+                yCoord * height + 1 + (height * diff.y2),
+                width * diff.w,
+                height * diff.h
+            );
+        }
+    
+        function drawFood(xCoord, yCoord, blockWidth, blockHeight) {
+            ctx.beginPath();
+            ctx.fillStyle = 'red';
+            ctx.arc(
+                blockWidth * (xCoord + 0.5),
+                blockHeight * (yCoord + 0.5),
+                Math.min(blockWidth, blockHeight) * 0.25,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
+    
+        // On load
+        document.addEventListener('DOMContentLoaded', function() {
+    
+            bUp.onclick = bDown.onclick = bLeft.onclick = bRight.onclick = function(event) {
+                let button = event.target;
+                if (event.target.tagName !== 'BUTTON') {
+                    button = event.target.parentElement;
+                }
+                
+                if (socket.readyState == socket.OPEN) {
+                    socket.send(button.dataset.move.toLowerCase());
+                }
+            }
+    
+            document.addEventListener('keydown', function(event) {
+                let key = event.key.toLowerCase();
+    
+                if (socket.readyState == socket.OPEN) {
+                    socket.send(key);
+                }
+            });
+        });
+    
+    </script>
+    
+
+</body>
+</html>

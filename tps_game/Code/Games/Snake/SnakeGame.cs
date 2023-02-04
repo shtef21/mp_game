@@ -183,7 +183,7 @@ namespace tps_game.Code.Games
 
             var summary = Newtonsoft.Json.JsonConvert.SerializeObject(new {
                 gameActive = gameActive,
-                timestamp = DateTime.Now.Ticks,
+                timestamp = DateTime.Now,
                 mapHeight,
                 mapWidth,
                 food = foodData,
