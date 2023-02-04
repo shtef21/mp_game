@@ -232,14 +232,42 @@ namespace tps_game.Code.Games
             {
                 tempCoord = (Static.Random.Next(0, mapHeight), Static.Random.Next(0, mapWidth));
 
-                int playersConflicting = players.Values.Where(snake => snake.GetPositions().Contains(tempCoord)).Count();
-                if (playersConflicting == 0)
+                bool blockAvailable = BlockIsFree(tempCoord);
+                if (blockAvailable)
                 {
                     foodCoordinate = tempCoord;
                     break;
                 }
                 --attempts;
             }
+        }
+
+        /// <summary>
+        /// The block is free next turn if it is inside map and does not collide with any player or corpse.
+        /// </summary>
+        /// <param name="yxCoord"> Coordinate to check. </param>
+        bool BlockIsFree((int, int) yxCoord)
+        {
+            // Outside of map
+            if (yxCoord.Item1 < 0 || yxCoord.Item1 >= mapHeight || yxCoord.Item2 < 0 || yxCoord.Item2 >= mapWidth)
+            {
+                return false;
+            }
+
+            // Hit a corpse
+            if (deadPlayers.Where(dp => dp.GetPositions().Contains((yxCoord.Item1, yxCoord.Item2))).Count() != 0)
+            {
+                return false;
+            }
+
+            // Hit a player
+            if (players.Values.Where(player => player.GetPositions().Contains((yxCoord.Item1, yxCoord.Item2))).Count() != 0)
+            {
+                return false;
+            }
+
+            // All good
+            return true;
         }
 
         /// <summary>
