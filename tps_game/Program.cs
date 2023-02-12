@@ -4,7 +4,7 @@ using tps_game.Code;
 #if DEBUG
 tps_game.Database.ResetDB();
 #else
-tps_game.Storage.SQLite.InitDB();
+tps_game.Database.InitDB();
 #endif
 
 var builder = WebApplication.CreateBuilder(args);
