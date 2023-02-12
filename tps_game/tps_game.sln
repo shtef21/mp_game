@@ -5,6 +5,8 @@ VisualStudioVersion = 17.4.33205.214
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "tps_game", "tps_game.csproj", "{10DB181B-5FB2-434A-9F36-9E27A994E6D2}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DB", "..\..\db_repo\DB\DB.csproj", "{0D112712-35F1-421A-8989-CFE639BC8111}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{10DB181B-5FB2-434A-9F36-9E27A994E6D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{10DB181B-5FB2-434A-9F36-9E27A994E6D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{10DB181B-5FB2-434A-9F36-9E27A994E6D2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0D112712-35F1-421A-8989-CFE639BC8111}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0D112712-35F1-421A-8989-CFE639BC8111}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0D112712-35F1-421A-8989-CFE639BC8111}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0D112712-35F1-421A-8989-CFE639BC8111}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
