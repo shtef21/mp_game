@@ -11,6 +11,7 @@ namespace tps_game.Code.Games
         List<Snake> deadPlayers = new List<Snake>();
         (int, int)? foodCoordinate;
         public bool gameActive = true;
+        Guid? gameGuid = null;
 
         public static int gameRefreshRateMs = 750;
 
@@ -30,10 +31,21 @@ namespace tps_game.Code.Games
             // Clear corpses
             deadPlayers.Clear();
 
+            // Generate new game guid
+            gameGuid = Guid.NewGuid();
+
             var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(gameRefreshRateMs));
 
             while(gameActive)
             {
+                // Before each turn, save positions to DB
+                string? gameGuidStr = gameGuid.ToString();
+                if (gameGuidStr != null && players.Count > 0)
+                {
+                    Console.WriteLine(" -> Adding map log...");
+                    _ = Database.SnakeAddMapLog(gameGuidStr, players);
+                }
+
                 foreach (var kvPair in players)
                 {
                     Guid guid = kvPair.Key;
@@ -76,19 +88,26 @@ namespace tps_game.Code.Games
 
         public string? OnPlayerConnected(Guid clientGuid, HttpContext context, WebSocket socket)
         {
-            if (context.Request.Query.ContainsKey("username") == false)
+            if (context.Request.Query.ContainsKey("token") == false)
             {
                 // Username missing
-                return "Username missing.";
+                return "Token missing.";
             }
 
-            string username = context.Request.Query["username"];
+            string token = context.Request.Query["token"];
+            string? username = Database.SnakeGetUsername(token);
 
-            if (players.Values.Where(player => player.username == username).Count() != 0)
+            if (username == null)
             {
-                // Username is taken
-                return "Username taken.";
+                // invalid token
+                return "Invalid token.";
             }
+
+            //if (players.Values.Where(player => player.username == username).Count() != 0)
+            //{
+            //    // Username is taken
+            //    return "Username taken.";
+            //}
 
             // Create player
             Snake player = new Snake(

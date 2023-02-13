@@ -348,3 +348,5 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+/tps_game/Properties/Resources.resx
+/tps_game/Properties/Resources.Designer.cs

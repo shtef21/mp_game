@@ -19,7 +19,7 @@ namespace tps_game.Controllers
             string username = body["username"].ToString();
             string password = body["password"].ToString();
 
-            string? token = tps_game.Database.LoginUser(username, password);
+            string? token = tps_game.Database.SnakeLoginUser(username, password);
             if (token == null)
             {
                 return "N-not_found";

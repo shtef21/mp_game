@@ -16,7 +16,7 @@
     #buttonContainer {
         background: rgb(239 68 68);
         padding: 3px;
-        height: 25vh;
+        height: calc((8.34vh - 2px) * 4 + 6px);
     }
 
     #buttonContainer .gameButton {
@@ -67,6 +67,35 @@
     #gameCanvasContainer {
         text-align: center;
         width: 100%;
+    }
+
+    #highScores {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 100vw;
+        background: rgba(0, 0, 0, 0.4);
+    }
+
+    #highScores .cancel {
+        position: absolute;
+        top: 8px;
+        right: 10px;
+    }
+
+    #highScoresContainer {
+        background: white;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        border-radius: 10px;
+        padding: 10px;
+        width: 800px;
+        max-width: 90vw;
+        max-height: 90vh;
+        overflow-y: scroll;
     }
 </style>
 
@@ -119,14 +148,93 @@
         </span>
     </button>
 
+    <!-- Go back -->
+    <button class="gameButton bg-yellow-400 text-white font-bold py-2 px-4" onclick="toggleHighScores();">
+        High scores <i class="fa-solid fa-trophy"></i>
+    </button>
 
 </div>
+
+<div id="highScores">
+    <div id="highScoresContainer">
+        <h3 class="text-lg ml-2 mb-2">High scores</h3>
+        <button class="cancel btn btn-red text-xl" onclick="toggleHighScores();">
+            <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+
+        <table id="highScoresTable" class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                <tr class="border-2 border-gray-200">
+                    <th scope="col" class="px-6 py-3">
+                        <i class="fa-solid fa-gamepad"></i> Game
+                    </th>
+                    <th scope="col" class="px-6 py-3">
+                        <i class="fa-solid fa-user"></i> User
+                    </th>
+                    <th scope="col" class="px-6 py-3">
+                        <i class="fa-solid fa-staff-snake"></i> Score
+                    </th>
+                    <th scope="col" class="px-6 py-3">
+                        <i class="fa-solid fa-calendar-days"></i> Date (UTC)
+                    </th>
+                </tr>
+            </thead>
+            <tbody id="highScoresBody">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<template id="highScoreTemplate" class="hidden">
+    <tr class="border-2 border-gray-200">
+        <td scope="col" class="px-6 py-3">
+            ${hs.gameNum}
+        </td>
+        <td scope="col" class="px-6 py-3">
+            ${hs.playerUsername}
+        </td>
+        <td scope="col" class="px-6 py-3">
+            ${hs.playerLength}
+        </td>
+        <td scope="col" class="px-6 py-3">
+            ${hs.timestampUtc.split('.')[0]}
+        </td>
+    </tr>
+</template>
 
 <div class="max-w-[500px] mx-auto p-3">
     <pre id="logs" class="p-3"></pre>
 </div>
 
 <script>
+
+    function toggleHighScores()
+    {
+        highScores.classList.toggle('hidden');
+        highScoresTable.classList.toggle('opacity-50');
+
+        fetch('/game/snakehighscores')
+        .then(res => res.json())
+        .then(function(data) {
+
+            // Sort by player length, then by date, then by username
+            data.sort(function(a, b) {
+                    return (b.playerLength - a.playerLength)
+                        || (new Date(b.timestampUtc) - new Date(a.timestampUtc))
+                        || b.playerUsername.localeCompare(a.playerUsername);
+            })
+
+            // Iterate high scores and generate rows
+            highScoresBody.innerHTML = '';
+            for (let hs of data) {
+
+                let row = eval('`' + highScoreTemplate.innerHTML + '`');
+                highScoresBody.insertAdjacentHTML('beforeend', row);
+            }
+            highScoresTable.classList.toggle('opacity-50');
+        });
+    }
+    toggleHighScores();
 
     let gameWidth = 350;
     let gameHeight = 350;
@@ -147,14 +255,17 @@
         wsProtocol = 'wss://'
     }
     
-    let username = 'test-' + Math.random();
-    var socket = new WebSocket(wsProtocol + location.host + '/game/snake?username=' + encodeURIComponent(username));
+    let userToken = sessionStorage.getItem('token');
+    let username = sessionStorage.getItem('username');
+
+    var socket = new WebSocket(wsProtocol + location.host + '/game/snake?token=' + encodeURIComponent(userToken));
 
     socket.onopen = function() {
         logs.innerText = 'Connection open.';
     }
 
     socket.onclose = function() {
+        controlsContainer.remove();
         logs.innerText = 'Connection closed.';
     }
 
@@ -176,6 +287,8 @@
 
         // Draw map first
         drawBlock(0, 0, gameWidth, gameHeight, 'green');
+
+        debugger;
 
         // Draw snakes
         for (let i = 0; i < summary.players.length; ++i) {
