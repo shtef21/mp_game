@@ -288,8 +288,6 @@
         // Draw map first
         drawBlock(0, 0, gameWidth, gameHeight, 'green');
 
-        debugger;
-
         // Draw snakes
         for (let i = 0; i < summary.players.length; ++i) {
 
@@ -324,6 +322,10 @@
 
         if (summary.food) {
             drawFood(summary.food.x, summary.food.y, blockWidth, blockHeight);
+        }
+
+        if (summary.gameActive == false) {
+            socket.close();
         }
     }
 
