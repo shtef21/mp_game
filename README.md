@@ -1,5 +1,5 @@
 # mp_game
-Creating a multiplayer HTML game in ASP .NET using web sockets and MySQL
+Creating a multiplayer HTML game in ASP .NET using web sockets and SQLite
 
 # Try it out
 Until User registration is added, you may login with demo username/password, namely shtef21/shtef21
