@@ -7,5 +7,12 @@ namespace tps_game.Code
     public class Static
     {
         public static Random Random = new Random();
+
+
+#if DEBUG
+        public static bool dbDeleteSetting = true;
+#else
+        public static bool deletePreviousDb = false;
+#endif
     }
 }

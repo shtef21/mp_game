@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using System.Globalization;
 using tps_game.Code.Games;
+using shtef21.SQLite;
 
 namespace tps_game
 {
@@ -9,9 +10,26 @@ namespace tps_game
     public class Database
     {
         // When project loads, create a database handler
-        private static DB.DbHandler db = new DB.DbHandler(Properties.Resources.dbPath);
+        static DB db = DB.Create("shtef21_sqlite.db", tps_game.Code.Static.dbDeleteSetting);
+        // old_db:
+        //private static DB.DbHandler db = new DB.DbHandler(Properties.Resources.dbPath);
 
-        // Users
+        // Website users
+        static DBTable _usersTable = new DBTable("users")
+            .AddColumn(DBColumn.MakeIdColumn())
+            .AddColumn(DBColumn.MakeTextColumn("guid", notNull: true))
+            .AddColumn(DBColumn.MakeUniqueTextColumn("username"))
+            .AddColumn(DBColumn.MakeUniqueTextColumn("email"))
+            .AddColumn(DBColumn.MakeTextColumn("hashed_pw", notNull: true))
+            .AddColumn(DBColumn.MakeTextColumn("login_token"))
+            .AddColumn(new DBColumn(
+                name: "email_confirmed",
+                type: DBColumnType.TEXT,
+                // y/n
+                defaultStr: "n"
+                ))
+            .AddColumn(DBColumn.MakeTimestampColumn("created_utc", setDefault: true));
+
         static string snakeUsersTable = "snake_users";
         static string[] SnakeUsersColumns = new string[]
         {
@@ -22,7 +40,31 @@ namespace tps_game
             "login_token char(36)"
         };
 
+        // Snake games (rounds)
+        DBTable snakeGamesTable = new DBTable("snake_games")
+            .AddColumn(DBColumn.MakeIdColumn())
+            .AddColumn(DBColumn.MakeTextColumn("guid", notNull: true))
+            .AddColumn(DBColumn.MakeTimestampColumn("finished_utc", setDefault: true))
+            .AddColumn(DBColumn.MakeTimestampColumn("created_utc", setDefault: true));
+
+        // Users / snake games table
+        DBTable usersSnakeGamesTable = new DBTable("users_snake_games")
+            .AddColumn(DBColumn.MakeIdColumn())
+            .AddColumn(DBColumn.MakeFKColumn("user_id", "users", "id"))
+            .AddColumn(DBColumn.MakeFKColumn("game_id", "games", "id"));
+
         // Map logs
+        //  snake_positions:
+        //      format: [(y1,x1),(y2,x2),...,(yN,xN)]
+        //          where N=snake_length
+        DBTable snakeGameLogs = new DBTable("snake_game_logs")
+            .AddColumn(DBColumn.MakeIdColumn())
+            .AddColumn(DBColumn.MakeFKColumn("game_id", "games", "id"))
+            .AddColumn(DBColumn.MakeFKColumn("user_id", "users", "id"))
+            .AddColumn(DBColumn.MakeIntegerColumn("snake_length"))
+            .AddColumn(DBColumn.MakeTextColumn("snake_positions"))
+            .AddColumn(DBColumn.MakeTimestampColumn("created_utc", setDefault: true))
+            ;
         static string snakeLogTable = "snake_log";
         static string[] snakeLogColumns = new string[]
         {

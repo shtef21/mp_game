@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\db_repo\DB\DB.csproj" />
+    <ProjectReference Include="..\..\cs_repo\shtef21\shtef21.csproj" />
   </ItemGroup>
 
   <ItemGroup>
