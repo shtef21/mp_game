@@ -2,6 +2,7 @@
 using System.Globalization;
 using tps_game.Code.Games;
 using shtef21.SQLite;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 
 namespace tps_game
 {
@@ -11,17 +12,16 @@ namespace tps_game
     {
         // When project loads, create a database handler
         static DB db = DB.Create("shtef21_sqlite.db", tps_game.Code.Static.dbDeleteSetting);
-        // old_db:
-        //private static DB.DbHandler db = new DB.DbHandler(Properties.Resources.dbPath);
 
-        // Website users
-        static DBTable _usersTable = new DBTable("users")
+        #region usersTable
+        public static DBTable usersTable = new DBTable("users")
             .AddColumn(DBColumn.MakeIdColumn())
             .AddColumn(DBColumn.MakeTextColumn("guid", notNull: true))
             .AddColumn(DBColumn.MakeUniqueTextColumn("username"))
             .AddColumn(DBColumn.MakeUniqueTextColumn("email"))
             .AddColumn(DBColumn.MakeTextColumn("hashed_pw", notNull: true))
             .AddColumn(DBColumn.MakeTextColumn("login_token"))
+            .AddColumn(DBColumn.MakeTimestampColumn("login_token_expire_utc")) // YYYY-MM-DD HH:MM:SS
             .AddColumn(new DBColumn(
                 name: "email_confirmed",
                 type: DBColumnType.TEXT,
@@ -29,52 +29,36 @@ namespace tps_game
                 defaultStr: "n"
                 ))
             .AddColumn(DBColumn.MakeTimestampColumn("created_utc", setDefault: true));
+        #endregion
 
-        static string snakeUsersTable = "snake_users";
-        static string[] SnakeUsersColumns = new string[]
-        {
-            "id integer primary key autoincrement",
-            "guid char(36)",
-            "username varchar(10)",
-            "hashed_pw char(88)",
-            "login_token char(36)"
-        };
-
-        // Snake games (rounds)
-        DBTable snakeGamesTable = new DBTable("snake_games")
+        #region snakeGamesTable
+        public static DBTable snakeGamesTable = new DBTable("snake_games")
             .AddColumn(DBColumn.MakeIdColumn())
             .AddColumn(DBColumn.MakeTextColumn("guid", notNull: true))
             .AddColumn(DBColumn.MakeTimestampColumn("finished_utc", setDefault: true))
             .AddColumn(DBColumn.MakeTimestampColumn("created_utc", setDefault: true));
+        #endregion
 
-        // Users / snake games table
-        DBTable usersSnakeGamesTable = new DBTable("users_snake_games")
+        #region usersSnakeGamesTable
+        public static DBTable usersSnakeGamesTable = new DBTable("users_snake_games")
             .AddColumn(DBColumn.MakeIdColumn())
             .AddColumn(DBColumn.MakeFKColumn("user_id", "users", "id"))
             .AddColumn(DBColumn.MakeFKColumn("game_id", "games", "id"));
+        #endregion
 
+        #region snakeGameLogs
         // Map logs
         //  snake_positions:
         //      format: [(y1,x1),(y2,x2),...,(yN,xN)]
         //          where N=snake_length
-        DBTable snakeGameLogs = new DBTable("snake_game_logs")
+        public static DBTable snakeGameLogs = new DBTable("snake_game_logs")
             .AddColumn(DBColumn.MakeIdColumn())
             .AddColumn(DBColumn.MakeFKColumn("game_id", "games", "id"))
             .AddColumn(DBColumn.MakeFKColumn("user_id", "users", "id"))
             .AddColumn(DBColumn.MakeIntegerColumn("snake_length"))
             .AddColumn(DBColumn.MakeTextColumn("snake_positions"))
-            .AddColumn(DBColumn.MakeTimestampColumn("created_utc", setDefault: true))
-            ;
-        static string snakeLogTable = "snake_log";
-        static string[] snakeLogColumns = new string[]
-        {
-            "id integer primary key autoincrement",
-            "game_guid char(36)",
-            "username varchar(10)",
-            "snake_length integer",
-            "next_move char(1)",
-            "timestamp_utc char(23)"
-        };
+            .AddColumn(DBColumn.MakeTimestampColumn("created_utc", setDefault: true));
+        #endregion
 
         // Create SQLite database
         public static void CreateDB()
@@ -97,58 +81,66 @@ namespace tps_game
             // Initialize the .db file
             CreateDB();
 
-            // Create users table if not exists
-            db.CreateTable(snakeUsersTable, SnakeUsersColumns);
+            // Create tables
+            db.CreateTable(usersTable);
+            db.CreateTable(snakeGamesTable);
+            db.CreateTable(usersSnakeGamesTable);
+            db.CreateTable(snakeGameLogs);
 
-            // Create map_log table if not exists
-            db.CreateTable(snakeLogTable, snakeLogColumns);
-
-            // Create example user
-            string username = tps_game.Properties.Resources.exampleUser;
-            string password = tps_game.Properties.Resources.examplePassword;
-
-            Console.Write($"Adding user shtef21/shtef21... ");
-            bool userAddFlag = SnakeAddUser(username, password);
-            Console.WriteLine(userAddFlag ? "User created!" : "Username taken.");
+            // Add first user
+            string username = Properties.Resources.exampleUser;
+            string email = Properties.Resources.exampleEmail;
+            string password = Properties.Resources.examplePassword;
+            AddUser(username, email, password);
         }
 
-        public static bool SnakeAddUser(string username, string password)
+        public static string FormatDateTime(DateTime date)
         {
-            long count = db.ExecuteScalarWhere<long>($"select count(*) from {snakeUsersTable}", "username", username);
-            if (count > 0)
+            return date.ToString("yyyy-MM-dd HH:mm-ss");
+        }
+
+        public static bool AddUser(string username, string email, string password)
+        {
+            long? count = db.SelectScalar<long>(
+                new SQLSelect(usersTable.tableName)
+                .Columns("count(*)")
+                .WhereEq("username", username)
+            );
+
+            if (count != null && count > 0)
             {
                 // User already exists
                 return false;
             }
 
-            // Make user
-            string hashedPw = DB.Crypto.MakeSha512(password);
-            db.AddRow(
-                snakeUsersTable,
-                new string[] { "username", "hashed_pw", "guid" },
-                new string[] { username, hashedPw, Guid.NewGuid().ToString() }
-            );
+            Guid userGuid = Guid.NewGuid();
+            string hashedPassword = shtef21.Crypto.Sha512.Generate(password);
+
+            SQLInsert insertCommand = new SQLInsert(usersTable.tableName)
+                .Columns(
+                    "guid", "username", "email", "hashed_pw"
+                )
+                .Values(
+                    userGuid, username, email, hashedPassword
+                );
+
+            db.InsertRow(insertCommand);
+            Console.WriteLine($"Added user \"{username}\" to DB. Total number of users: {(count ?? 0) + 1}");
+
             return true;
         }
 
         // Login the user and return his login token
         public static string? SnakeLoginUser(string username, string password)
         {
-            string hashedPw = DB.Crypto.MakeSha512(password);
+            string hashedPw = shtef21.Crypto.Sha512.Generate(password);
 
-            var findUser = db.GetTable(
-                snakeUsersTable,
-                null,
-                new string[]
-                {
-                    "username",
-                    "hashed_pw"
-                },
-                new string[]
-                {
-                    username,
-                    hashedPw
-                });
+            DataTable findUser = db.Select(new SQLSelect(usersTable.tableName)
+                .Columns("username", "hashed_pw")
+                .WhereEq(
+                    ("username", username),
+                    ("hashed_pw", hashedPw)
+                ));
 
             if (findUser.Rows.Count == 0)
             {
@@ -158,85 +150,107 @@ namespace tps_game
             {
                 // Generate and save token
                 string token = Guid.NewGuid().ToString();
-                long userId = (long)findUser.Rows[0]["id"];
+                DateTime tokenExpire = DateTime.UtcNow.AddDays(1);
 
-                db.UpdateColumn(snakeUsersTable, "login_token", token, "id", userId.ToString());
+                db.Update(new SQLUpdate(usersTable.tableName)
+                    .ColumnUpdate(
+                        ("login_token", token),
+                        ("login_token_expire_utc", FormatDateTime(tokenExpire))
+                    )
+                    .WhereEq("username", username)
+                );
                 return token;
             }
         }
 
         public static string? SnakeGetUsername(string loginToken)
         {
-            DataTable user = db.GetTable(
-                snakeUsersTable,
-                new string[] { "username" },
-                new string[] { "login_token" },
-                new string[] { loginToken }
-            );
-
-            // Return username if available
-            return user.Rows.Count > 0 ? user.Rows[0]["username"].ToString() : null;
+            // If token found & valid
+            if (SnakeCheckToken(loginToken) == true)
+            {
+                string? username = db.SelectScalar<string>(new SQLSelect(usersTable.tableName)
+                    .Columns("username")
+                    .WhereEq("login_token", loginToken));
+                return username;
+            }
+            return null;
         }
 
         public static bool SnakeCheckToken(string token)
         {
-            var findUser = db.GetTable(snakeUsersTable, null,
-                new string[] { "login_token" },
-                new string[] { token }
+            // login_token_expire_utc
+            DataTable findUser = db.Select(
+                new SQLSelect(usersTable.tableName)
+                .Columns("login_token", "login_token_expire_utc")
+                .WhereEq("login_token", token)
             );
-            return findUser.Rows.Count > 0;
+
+            // If token found
+            if (findUser.Rows.Count == 1)
+            {
+                string? expires = findUser.Rows[0]["login_token_expire_utc"].ToString();
+
+                // If token not expired
+                if (expires != null && DateTime.Parse(expires) < DateTime.UtcNow)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         public static async Task SnakeAddMapLog(string gameGuid, Dictionary<Guid, Snake> players)
         {
-            string timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
+            return;
+            //string timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
 
-            List<Task> tasks = new List<Task>(players.Count);
+            //List<Task> tasks = new List<Task>(players.Count);
 
-            foreach(Snake player in players.Values)
-            {
-                tasks.Add(new Task(delegate
-                    {
-                        db.InsertOrUpdateColumn(
-                            snakeLogTable,
-                            new string[] {
-                                "username",
-                                "game_guid"
-                            },
-                            new string[]
-                            {
-                                player.username,
-                                gameGuid
-                            },
-                            new string[]
-                            {
-                                "game_guid",
-                                "username",
-                                "snake_length",
-                                "next_move",
-                                "timestamp_utc"
-                            },
-                            new string[]
-                            {
-                                gameGuid,
-                                player.username,
-                                player.GetPositions().Length.ToString(),
-                                "" + player.GetDirection(),
-                                timestamp
-                            }
-                        );
-                    })
-                );
-                tasks.Last().Start();
-            }
+            //foreach(Snake player in players.Values)
+            //{
+            //    tasks.Add(new Task(delegate
+            //        {
+            //            db.InsertOrUpdateColumn(
+            //                snakeLogTable,
+            //                new string[] {
+            //                    "username",
+            //                    "game_guid"
+            //                },
+            //                new string[]
+            //                {
+            //                    player.username,
+            //                    gameGuid
+            //                },
+            //                new string[]
+            //                {
+            //                    "game_guid",
+            //                    "username",
+            //                    "snake_length",
+            //                    "next_move",
+            //                    "timestamp_utc"
+            //                },
+            //                new string[]
+            //                {
+            //                    gameGuid,
+            //                    player.username,
+            //                    player.GetPositions().Length.ToString(),
+            //                    "" + player.GetDirection(),
+            //                    timestamp
+            //                }
+            //            );
+            //        })
+            //    );
+            //    tasks.Last().Start();
+            //}
 
-            await Task.WhenAll(tasks.ToArray());
+            //await Task.WhenAll(tasks.ToArray());
         }
 
         public static DataTable SnakeGetHighScores()
         {
-            DataTable highScores = db.GetTable(snakeLogTable);
-            return highScores;
+            return null;
+            //DataTable highScores = db.GetTable(snakeLogTable);
+            //return highScores;
         }
 
     }

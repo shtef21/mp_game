@@ -18,8 +18,9 @@ namespace tps_game.Controllers
 
         public IActionResult SnakeHighScores()
         {
-            var highScores = tps_game.Code.Games.SnakeHighScore.FetchHighScores();
-            return Json(highScores);
+            return null;
+            //var highScores = tps_game.Code.Games.SnakeHighScore.FetchHighScores();
+            //return Json(highScores);
         }
 
     }
