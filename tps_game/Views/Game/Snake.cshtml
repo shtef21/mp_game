@@ -140,22 +140,22 @@
         <i class="fa-regular fa-circle-xmark"></i>
     </button>
 
-    <!-- Go back -->
-    <button class="gameButton bg-green-400 text-white font-bold py-2 px-4">
+    <!-- Ping -->
+    <button class="gameButton bg-green-400 text-white font-bold py-2 px-4 cursor-default">
         Ping:
         <span id="pingLog">
             <i class="fas fa-spinner fa-spin"></i>
         </span>
     </button>
 
-    <!-- Go back -->
+    <!-- High scores -->
     <button class="gameButton bg-yellow-400 text-white font-bold py-2 px-4" onclick="toggleHighScores();">
         High scores <i class="fa-solid fa-trophy"></i>
     </button>
 
 </div>
 
-<div id="highScores">
+<div id="highScores" class="hidden">
     <div id="highScoresContainer">
         <h3 class="text-lg ml-2 mb-2">High scores</h3>
         <button class="cancel btn btn-red text-xl" onclick="toggleHighScores();">
@@ -166,16 +166,16 @@
             <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                 <tr class="border-2 border-gray-200">
                     <th scope="col" class="px-6 py-3">
-                        <i class="fa-solid fa-gamepad"></i> Game
+                        <i class="fa-solid fa-gamepad"></i>&nbsp;Game
                     </th>
                     <th scope="col" class="px-6 py-3">
-                        <i class="fa-solid fa-user"></i> User
+                        <i class="fa-solid fa-user"></i>&nbsp;User
                     </th>
                     <th scope="col" class="px-6 py-3">
-                        <i class="fa-solid fa-staff-snake"></i> Score
+                        <i class="fa-solid fa-staff-snake"></i>&nbsp;Score
                     </th>
                     <th scope="col" class="px-6 py-3">
-                        <i class="fa-solid fa-calendar-days"></i> Date (UTC)
+                        <i class="fa-solid fa-calendar-days"></i>&nbsp;Date&nbsp;(UTC)
                     </th>
                 </tr>
             </thead>
@@ -210,11 +210,10 @@
 
     function toggleHighScores()
     {
-        return;
-
         highScores.classList.toggle('hidden');
         highScoresTable.classList.toggle('opacity-50');
 
+        return;
         fetch('/game/snakehighscores')
         .then(res => res.json())
         .then(function(data) {
@@ -228,15 +227,14 @@
 
             // Iterate high scores and generate rows
             highScoresBody.innerHTML = '';
-            for (let hs of data) {
 
+            for (let hs of data) {
                 let row = eval('`' + highScoreTemplate.innerHTML + '`');
                 highScoresBody.insertAdjacentHTML('beforeend', row);
             }
             highScoresTable.classList.toggle('opacity-50');
         });
     }
-    toggleHighScores();
 
     let gameWidth = 350;
     let gameHeight = 350;
@@ -269,6 +267,10 @@
     socket.onclose = function() {
         controlsContainer.remove();
         logs.innerText = 'Connection closed.';
+
+        if (highScores.classList.contains('hidden')) {
+            toggleHighScores();
+        }
     }
 
     socket.onmessage = function(event) {
@@ -276,13 +278,19 @@
         let summary = JSON.parse(event.data);
         logs.innerText = JSON.stringify(summary, null, 2);
 
+        console.log('Game active: ' + summary.gameActive);
+
         // Set ping data
-        let dateSent = new Date(summary.timestamp);
-        let pingMs = new Date() - dateSent;
+        let timeSentUtc = new Date(summary.timestamp);
+        let timeReceivedUtc = new Date(new Date().toUTCString().replace(' GMT', ''));
+
+        let pingMs = timeReceivedUtc - timeSentUtc;
         if (pingMs < 1) {
             pingMs = '<1';
         }
         pingLog.innerText = pingMs + 'ms';
+
+        debugger;
 
         let blockWidth = gameWidth / summary.mapWidth;
         let blockHeight = gameHeight / summary.mapHeight;

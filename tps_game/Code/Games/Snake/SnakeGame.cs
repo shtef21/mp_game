@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Timers;
 using tps_game.Code.Old;
+using Microsoft.EntityFrameworkCore.Scaffolding.Metadata;
 
 namespace tps_game.Code.Games
 {
@@ -10,8 +11,8 @@ namespace tps_game.Code.Games
         Dictionary<Guid, Snake> players = new Dictionary<Guid, Snake>();
         List<Snake> deadPlayers = new List<Snake>();
         (int, int)? foodCoordinate;
-        public bool gameActive = true;
-        Guid? gameGuid = null;
+        public bool gameActive = false;
+        long? gameId = null;
 
         public static int gameRefreshRateMs = 750;
 
@@ -22,8 +23,6 @@ namespace tps_game.Code.Games
             this.mapHeight = mapHeight;
             this.mapWidth = mapWidth;
             this.foodCoordinate = null;
-
-            _ = StartGame();
         }
 
         async Task StartGame()
@@ -32,18 +31,26 @@ namespace tps_game.Code.Games
             deadPlayers.Clear();
 
             // Generate new game guid
-            gameGuid = Guid.NewGuid();
+            gameId = Database.CreateGame();
+
+            if (gameId == null)
+            {
+                // For some reason, database did not return game ID, so don't start the game
+                return;
+            }
+            else
+            {
+                gameActive = true;
+            }
 
             var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(gameRefreshRateMs));
 
             while(gameActive)
             {
-                // Before each turn, save positions to DB
-                string? gameGuidStr = gameGuid.ToString();
-                if (gameGuidStr != null && players.Count > 0)
+                if (players.Count > 0)
                 {
                     Console.WriteLine(" -> Adding map log...");
-                    _ = Database.SnakeAddMapLog(gameGuidStr, players);
+                    _ = Database.SnakeAddMapLog((long)gameId, players);
                 }
 
                 foreach (var kvPair in players)
@@ -94,20 +101,14 @@ namespace tps_game.Code.Games
                 return "Token missing.";
             }
 
-            string token = context.Request.Query["token"];
-            string? username = Database.SnakeGetUsername(token);
+            string? token = context.Request.Query["token"];
+            string? username = token != null ? Database.GetUsername(token) : null;
 
             if (username == null)
             {
                 // invalid token
                 return "Invalid token.";
             }
-
-            //if (players.Values.Where(player => player.username == username).Count() != 0)
-            //{
-            //    // Username is taken
-            //    return "Username taken.";
-            //}
 
             // Create player
             Snake player = new Snake(
@@ -125,13 +126,14 @@ namespace tps_game.Code.Games
             // Try to create food
             TryGenerateFood();
 
-            // Send new map data to all players
-            BroadcastSummary();
-
-            // New player connected, start the timer again
-            if (gameActive == false)
+            if (gameActive == true)
             {
-                gameActive = true;
+                // Send new map data to all players
+                BroadcastSummary();
+            }
+            else
+            {
+                // New player connected, start the game again
                 _ = StartGame();
             }
             
@@ -157,11 +159,14 @@ namespace tps_game.Code.Games
             // If no new players after 10 seconds, stop the game
             _ = SetTimeout(10_000, () =>
             {
-                if (players.Count == 0)
+                if (players.Count == 0 && gameId != null)
                 {
                     // Set game to inactive
-                    gameActive = false;
+
                     Console.WriteLine("No active players for 5 seconds. Stopping the game.");
+                    Database.FinishGame((long)gameId);
+                    gameId = null;
+                    gameActive = false;
 
                     // Broadcast summary for the last time to any connected corpses
                     BroadcastSummary();
@@ -190,7 +195,7 @@ namespace tps_game.Code.Games
 
         private void BroadcastSummary()
         {
-            var foodData = (object)null;
+            var foodData = (object?)null;
             if (foodCoordinate != null)
             {
                 foodData = new
@@ -201,8 +206,8 @@ namespace tps_game.Code.Games
             }
 
             var summary = Newtonsoft.Json.JsonConvert.SerializeObject(new {
-                gameActive = gameActive,
-                timestamp = DateTime.Now,
+                gameActive,
+                timestamp = Database.FormatDateTime(DateTime.UtcNow),
                 mapHeight,
                 mapWidth,
                 food = foodData,

@@ -25,9 +25,37 @@ namespace tps_game.Code.Games
             Dictionary<string, long> gameCountersDict = new Dictionary<string, long>();
 
             DataTable highScoresDb = Database.SnakeGetHighScores();
-            List<SnakeHighScore> highScores = new List<SnakeHighScore>(highScoresDb.Rows.Count);
+            List<SnakeHighScore> highScores = new List<SnakeHighScore>();
 
-            foreach(DataRow row in highScoresDb.Rows)
+            // Unique names and users grouped
+            HashSet<long> gameIds = new HashSet<long>();
+            Dictionary<long, HashSet<long>> gameUsers = new Dictionary<long, HashSet<long>>();
+
+            foreach (DataRow row in highScoresDb.Rows)
+            {
+                long gameId = (long)row["game_id"];
+                gameIds.Add(gameId);
+
+                if (gameUsers.ContainsKey(gameId) == false)
+                {
+                    gameUsers[gameId] = new HashSet<long>();
+                }
+
+                long userId = (long)row["user_id"];
+                gameUsers[gameId].Add(userId);
+            }
+
+            /*
+                string expression = "Date = '1/31/1979' or OrderID = 2";
+
+      string sortOrder = "CompanyName ASC";
+      DataRow[] foundRows;
+
+      // Use the Select method to find all rows matching the filter.
+      foundRows = table.Select(expression, sortOrder);
+             */
+
+            foreach (DataRow row in highScoresDb.Rows)
             {
                 string gameGuid = (string) row["game_guid"];
                 if (gameCountersDict.ContainsKey(gameGuid) == false)

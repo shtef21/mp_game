@@ -60,7 +60,7 @@ app.Use(async (context, next) =>
     string? userToken = context.Request.Cookies["token"];
     if (userToken != null)
     {
-        tokenValid = tps_game.Database.SnakeCheckToken(userToken);
+        tokenValid = tps_game.Database.CheckToken(userToken);
     }
 
     if (tokenValid == false)

@@ -49,6 +49,7 @@
                             <div class="flex items-start">
                                 <div class="flex items-center h-5">
                                     <input id="remember_i" aria-describedby="remember" type="checkbox" class="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-blue-300" required="">
+                                    <input id="email_i" type="text" class="hidden w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-blue-300" required="">
                                 </div>
                                 <div class="ml-3 text-sm">
                                     <label for="remember" class="text-gray-500">Remember me</label>
@@ -76,12 +77,16 @@
 
             let username = username_i.value;
             let password = password_i.value;
+            let email = email_i.value;
+            let rememberMe = remember_i.checked ? 'Y' : 'N';
 
             let response = await fetch('/user/login', {
                 method: 'POST',
                 body: JSON.stringify({
                     username: username,
-                    password: password
+                    password: password,
+                    rememberMe: rememberMe,
+                    email: email
                 })
             }).then(res => res.text());
 
@@ -89,18 +94,23 @@
                 alert('Login error code: ' + response.substring(2));
             }
             else {
+
                 // Handle cookie expiration
-                let expiresTime = 60 * 60 * 1000; // Expires in 1h
+                let expirationText = ' expires=0;'; // By default, set as session cookie
+
+                // If 'Remember me' checked, set 7 day expiration
                 if (remember_i.checked) {
+
                     expiresTime = 7 * 24 * 60 * 60 * 1000; // Expires in 7d
+                    let expires = new Date();
+                    expires.setTime(expires.getTime() + expiresTime);
+
+                    expirationText = ' expires=' + expires.toUTCString() + ';';
                 }
 
-                // Calculate expiration time
-                let expires = new Date();
-                expires.setTime(expires.getTime() + expiresTime);
 
                 // Set cookie
-                document.cookie = 'token=' + response + '; expires=' + expires.toUTCString() + "; path=/";
+                document.cookie = 'token=' + response + ';' + expirationText + ' path=/';
 
                 // Save cookie to session
                 sessionStorage.setItem('token', response);

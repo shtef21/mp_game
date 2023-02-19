@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="shtef21_sqlite.db" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="WS\" />
     <Folder Include="wwwroot\css\" />
     <Folder Include="wwwroot\js\" />

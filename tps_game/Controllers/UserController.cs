@@ -18,9 +18,11 @@ namespace tps_game.Controllers
 
             string username = body["username"].ToString();
             string password = body["password"].ToString();
+            bool rememberMe = body["rememberMe"].ToString() == "Y";
+            string email = body["email"].ToString(); // Bot-checking
 
-            string? token = tps_game.Database.SnakeLoginUser(username, password);
-            if (token == null)
+            string? token = tps_game.Database.LoginUser(username, password, rememberMe);
+            if (token == null || string.IsNullOrWhiteSpace(email) == false)
             {
                 return "N-not_found";
             }
