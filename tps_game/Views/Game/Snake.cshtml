@@ -155,7 +155,7 @@
 
 </div>
 
-<div id="highScores" class="hidden">
+<div id="highScores" class="hidden" onclick="checkClickOutside(this, event)">
     <div id="highScoresContainer">
         <h3 class="text-lg ml-2 mb-2">High scores</h3>
         <button class="cancel btn btn-red text-xl" onclick="toggleHighScores();">
@@ -208,22 +208,21 @@
 
 <script>
 
+    function checkClickOutside(backdrop, event) {
+
+        if (event.target == backdrop) {
+            toggleHighScores();
+        }
+    }
+
     function toggleHighScores()
     {
         highScores.classList.toggle('hidden');
         highScoresTable.classList.toggle('opacity-50');
 
-        return;
         fetch('/game/snakehighscores')
         .then(res => res.json())
         .then(function(data) {
-
-            // Sort by player length, then by date, then by username
-            data.sort(function(a, b) {
-                    return (b.playerLength - a.playerLength)
-                        || (new Date(b.timestampUtc) - new Date(a.timestampUtc))
-                        || b.playerUsername.localeCompare(a.playerUsername);
-            })
 
             // Iterate high scores and generate rows
             highScoresBody.innerHTML = '';
@@ -289,8 +288,6 @@
             pingMs = '<1';
         }
         pingLog.innerText = pingMs + 'ms';
-
-        debugger;
 
         let blockWidth = gameWidth / summary.mapWidth;
         let blockHeight = gameHeight / summary.mapHeight;

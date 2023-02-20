@@ -76,6 +76,7 @@ namespace tps_game
             string email = Properties.Resources.exampleEmail;
             string password = Properties.Resources.examplePassword;
             AddUser(username, email, password);
+            ValidateUserEmail(username);
         }
 
         public static string FormatDateTime(DateTime date)
@@ -113,7 +114,44 @@ namespace tps_game
             db.InsertRow(insertCommand);
             Console.WriteLine($"Added user \"{username}\" to DB. Total number of users: {(count ?? 0) + 1}");
 
+            // On release, send e-mail upon user registration, asking for e-mail confirm
+#if !DEBUG
+            // Sending a mail to verify token
+            Task.Run(delegate
+            {
+                var mail = new shtef21.Mailing.Mail(
+                    Properties.Resources.mailSender,
+                    Properties.Resources.mailSenderName,
+                    Properties.Resources.mailSenderPassword);
+
+                mail.Send(
+                    recipientAddr: email,
+                    recipientName: username,
+                    subject: "MP-GAME: E-mail Confirm",
+                    body: "Dear " + username + ",\n\n" +
+                    "you have recently signed up on www.mp-game.com:\n" +
+                    " - username: " + username + "\n" +
+                    " - e-mail: " + email + "\n" +
+                    " - password: (hidden)\n\n" +
+                    "To finish your registration, please open this link: (WIP)\n\n" +
+                    "Enjoy your time!\n" +
+                    "mp-game.com",
+                    isBodyHtml: false
+                );
+
+                Console.WriteLine($"Sent an e-mail to {email}.");
+            });
+#endif
+
             return true;
+        }
+
+        public static void ValidateUserEmail(string username)
+        {
+            var updateCommand = new SQLUpdate(usersTable.tableName)
+                .ColumnUpdate("email_confirmed", "y")
+                .WhereEq("username", username);
+            db.Update(updateCommand);
         }
 
         // Login the user and return his login token
@@ -125,7 +163,8 @@ namespace tps_game
                 .Columns("username", "hashed_pw")
                 .WhereEq(
                     ("username", username),
-                    ("hashed_pw", hashedPw)
+                    ("hashed_pw", hashedPw),
+                    ("email_confirmed", "y")
                 ));
 
             if (findUser.Rows.Count == 0)
@@ -260,8 +299,26 @@ namespace tps_game
 
         public static DataTable SnakeGetHighScores()
         {
-            string sql = $@"
-
+            // Select logs, but take only maximum score of a player in a given game
+            string sql = @"
+                SELECT
+                    snake_game_logs.id,
+                    snake_game_logs.game_id,
+                    snake_game_logs.user_id,
+                    users.username,
+    
+                    max(snake_game_logs.snake_length) snake_length,
+                    snake_game_logs.created_utc
+    
+                FROM snake_game_logs
+                INNER JOIN users
+                    ON users.id = snake_game_logs.user_id
+                GROUP BY
+                    snake_game_logs.game_id,
+                    snake_game_logs.user_id
+                ORDER BY
+                    snake_game_logs.snake_length DESC,
+                    snake_game_logs.id ASC;
             ";
             DataTable highScores = db.SelectCustom(sql);
             return highScores;
