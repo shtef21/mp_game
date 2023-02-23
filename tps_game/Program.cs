@@ -51,42 +51,7 @@ app.Use(async (context, next) =>
     }
 });
 
-app.Use(async (context, next) =>
-{
-    string requestPath = context.Request.Path.ToString().ToLower();
-    bool tokenValid = false;
-
-    // Check token
-    string? userToken = context.Request.Cookies["token"];
-    if (userToken != null)
-    {
-        tokenValid = tps_game.Database.CheckToken(userToken);
-    }
-
-    if (tokenValid == false)
-    {
-        // Token not found or invalid
-
-        if (requestPath == "/user/login")
-        {
-            // This is a path for user login
-            await next();
-        }
-        else if (requestPath != "/home/login")
-        {
-            // No token, redirect to login
-            context.Response.Redirect("/home/login");
-        }
-        else
-        {
-            await next();
-        }
-    }
-    else
-    {
-        await next();
-    }
-});
+app.Use(Static.CheckTokenMiddleware);
 
 app.MapControllerRoute(
     name: "default",
